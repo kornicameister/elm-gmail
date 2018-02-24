@@ -1,0 +1,9 @@
+{
+  "name": "kgmail-elm",
+  "homepage": "http://kornicameister.github.io/kgmail",
+  "version": "0.0.1",
+  "private": true,
+  "dependencies": {
+    "materialize-css": "^1.0.0-alpha.4"
+  }
+}
