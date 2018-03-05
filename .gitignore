@@ -12,3 +12,6 @@ node_modules
 
 # Desktop Services Store on macOS
 .DS_Store
+
+# client_id.json - credentials downloaded from Google Console
+client_id.json

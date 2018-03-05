@@ -4,6 +4,6 @@
   "version": "0.0.1",
   "private": true,
   "dependencies": {
-    "materialize-css": "^1.0.0-alpha.4"
+    "material-components-web": "^0.31.0"
   }
 }

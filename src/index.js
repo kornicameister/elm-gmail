@@ -1,10 +1,16 @@
-import './main.css';
-import 'materialize-css/dist/css/materialize.css';
+import "material-components-web/dist/material-components-web.min.css";
 
-import { Main } from './Main.elm';
+import { Main } from "./Main.elm";
 
-import registerServiceWorker from './registerServiceWorker';
+import registerServiceWorker from "./registerServiceWorker";
+import { load as loadGApi, signIn, signOut, getUser } from './google';
 
-Main.embed(document.getElementById('root'));
+import "./main.css";
+
+const app = Main.embed(document.getElementById('root'));
+app.ports.gApiSignIn.subscribe(() => signIn());
+app.ports.gApiSignOut.subscribe(() => signOut());
 
 registerServiceWorker();
+
+loadGApi(() => app.ports.gApiIsSignedIn.send(getUser()));
