@@ -7,7 +7,7 @@ import RemoteData
 
 empty : H.Html msg
 empty =
-    H.div [] []
+    H.text ""
 
 
 materialIcon : String -> H.Html msg

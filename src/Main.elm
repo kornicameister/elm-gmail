@@ -31,7 +31,6 @@ type PageState
 
 type alias AuthedPageState =
     { user : User.User
-    , messageIds : RemoteData.RemoteData Http.Error MessageId.Envelope
     , threads : RemoteData.RemoteData Http.Error Thread.Envelope
     }
 
@@ -50,7 +49,6 @@ type Msg
     | GoogleApiSignedStatusChanged (Maybe User.User)
     | GoogleApiSignIn
     | GoogleApiSignOut
-    | MessageIdsLoaded (Result Http.Error MessageId.Envelope)
     | ThreadsLoaded (Result Http.Error Thread.Envelope)
 
 
@@ -70,13 +68,10 @@ update msg model =
                         Just user ->
                             ( Authed
                                 { user = user
-                                , messageIds = RemoteData.Loading
                                 , threads = RemoteData.Loading
                                 }
                             , Cmd.batch
-                                [ Request.Message.listIds user.accessToken
-                                    |> Http.send MessageIdsLoaded
-                                , Request.Thread.list user.accessToken
+                                [ Request.Thread.list user.accessToken
                                     |> Http.send ThreadsLoaded
                                 ]
                             )
@@ -93,16 +88,6 @@ update msg model =
             ( model, Ports.gApiSignOut () )
 
         ( GoogleApiSignOut, NotAuthed ) ->
-            ( model, Cmd.none )
-
-        ( MessageIdsLoaded result, Authed state ) ->
-            ( { model
-                | state = Authed { state | messageIds = RemoteData.fromResult result }
-              }
-            , Cmd.none
-            )
-
-        ( MessageIdsLoaded result, NotAuthed ) ->
             ( model, Cmd.none )
 
         ( ThreadsLoaded result, Authed state ) ->
@@ -144,35 +129,26 @@ loginScreen =
 
 
 mainScreen : AuthedPageState -> H.Html Msg
-mainScreen { user, threads, messageIds } =
+mainScreen state =
     let
-        allData =
-            RemoteData.map2 (,) threads messageIds
-                |> RemoteData.map
-                    (\( threads, messageIds ) -> ( threads, messageIds ))
-
-        threadView messages thread =
+        threadView thread =
             H.div []
                 [ H.h3 [ HA.class "mdc-list-group__subheader" ] [ H.text thread.snippet ]
-                , H.ul [ HA.class "mdc-list" ]
-                    [ List.filter (\message -> message.threadId == thread.threadId) messages
-                        |> List.map (\message -> H.li [ HA.class "mdc-list-item" ] [ H.text <| toString message.messageId ])
-                        |> H.ul [ HA.class "mdc-list" ]
-                    ]
+                , H.ul [ HA.class "mdc-list" ] [ H.ul [ HA.class "mdc-list" ] [] ]
                 ]
     in
         H.div []
-            [ mainScreenHeader user
+            [ mainScreenHeader state.user
             , H.main_ []
-                [ C.progressBar allData
-                , case allData of
+                [ C.progressBar state.threads
+                , case state.threads of
                     RemoteData.Failure err ->
                         C.empty
 
-                    RemoteData.Success ( { threads }, { messages } ) ->
+                    RemoteData.Success { threads } ->
                         H.div [ HA.class "mdc-list-group" ]
                             [ threads
-                                |> List.map (threadView messages)
+                                |> List.map threadView
                                 |> H.div []
                             ]
 
@@ -216,16 +192,9 @@ subscriptions model =
 
 decodeUser : Encode.Value -> Msg
 decodeUser x =
-    let
-        result =
-            Decode.decodeValue (Decode.nullable User.decoder) x
-    in
-        case result of
-            Ok maybeUser ->
-                GoogleApiSignedStatusChanged maybeUser
-
-            Err _ ->
-                GoogleApiSignedStatusChanged Nothing
+    Decode.decodeValue (Decode.nullable User.decoder) x
+        |> Result.withDefault Nothing
+        |> GoogleApiSignedStatusChanged
 
 
 
