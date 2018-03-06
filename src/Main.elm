@@ -10,10 +10,9 @@ import RemoteData
 import Component as C
 import Ports
 import Data.User as User
-import Data.MessageId as MessageId
 import Data.Thread as Thread
-import Request.Message
 import Request.Thread
+import View.Thread
 
 
 ---- MODEL ----
@@ -31,7 +30,7 @@ type PageState
 
 type alias AuthedPageState =
     { user : User.User
-    , threads : RemoteData.RemoteData Http.Error Thread.Envelope
+    , threads : RemoteData.WebData (List View.Thread.Model)
     }
 
 
@@ -50,6 +49,7 @@ type Msg
     | GoogleApiSignIn
     | GoogleApiSignOut
     | ThreadsLoaded (Result Http.Error Thread.Envelope)
+    | ThreadViewMsg View.Thread.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -91,13 +91,38 @@ update msg model =
             ( model, Cmd.none )
 
         ( ThreadsLoaded result, Authed state ) ->
-            ( { model
-                | state = Authed { state | threads = RemoteData.fromResult result }
-              }
-            , Cmd.none
-            )
+            let
+                ( threads, cmd ) =
+                    case RemoteData.fromResult result of
+                        RemoteData.NotAsked ->
+                            ( RemoteData.NotAsked, Cmd.none )
+
+                        RemoteData.Loading ->
+                            ( RemoteData.Loading, Cmd.none )
+
+                        RemoteData.Failure error ->
+                            ( RemoteData.Failure error, Cmd.none )
+
+                        RemoteData.Success { threads } ->
+                            ( List.map
+                                (\thread -> RemoteData.Loading)
+                                threads
+                                |> RemoteData.Success
+                            , Cmd.batch
+                                [
+                                    List.map (\thread -> View.Thread.init state.user.accessToken thread.threadId) threads
+                                ]
+                            )
+            in
+                ( { model | state = Authed { state | threads = RemoteData.Loading } }, cmd )
 
         ( ThreadsLoaded result, NotAuthed ) ->
+            ( model, Cmd.none )
+
+        ( ThreadViewMsg msg, Authed _ ) ->
+            ( model, Cmd.none )
+
+        ( ThreadViewMsg msg, NotAuthed ) ->
             ( model, Cmd.none )
 
 
@@ -145,12 +170,11 @@ mainScreen state =
                     RemoteData.Failure err ->
                         C.empty
 
-                    RemoteData.Success { threads } ->
-                        H.div [ HA.class "mdc-list-group" ]
-                            [ threads
-                                |> List.map threadView
-                                |> H.div []
-                            ]
+                    RemoteData.Success threadModels ->
+                        threadModels
+                            |> List.map View.Thread.view
+                            |> H.div [ HA.class "mdc-list-group" ]
+                            |> H.map ThreadViewMsg
 
                     _ ->
                         C.empty

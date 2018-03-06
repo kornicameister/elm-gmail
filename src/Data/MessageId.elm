@@ -1,4 +1,4 @@
-module Data.MessageId exposing (Envelope, MessageId, decoder)
+module Data.MessageId exposing (Envelope, MessageId, decoder, envelopeDecoder)
 
 import Json.Decode as Decode
 import Json.Decode.Pipeline as DecodeP
@@ -25,16 +25,16 @@ type alias MessageId =
 ---- SERIALIZATION
 
 
-decoder : Decode.Decoder Envelope
+decoder : Decode.Decoder MessageId
 decoder =
-    DecodeP.decode Envelope
-        |> DecodeP.required "messages" (Decode.list messageIdDecoder)
-        |> DecodeP.required "nextPageToken" (Decode.nullable Decode.string)
-        |> DecodeP.required "resultSizeEstimate" Decode.int
-
-
-messageIdDecoder : Decode.Decoder MessageId
-messageIdDecoder =
     DecodeP.decode MessageId
         |> DecodeP.required "id" Id.messageIdDecoder
         |> DecodeP.required "threadId" Id.threadIdDecoder
+
+
+envelopeDecoder : Decode.Decoder Envelope
+envelopeDecoder =
+    DecodeP.decode Envelope
+        |> DecodeP.required "messages" (Decode.list decoder)
+        |> DecodeP.required "nextPageToken" (Decode.nullable Decode.string)
+        |> DecodeP.required "resultSizeEstimate" Decode.int

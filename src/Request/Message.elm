@@ -15,5 +15,5 @@ listIds token =
     in
         HttpB.get url
             |> Token.withAuthorizationHeader (Just token)
-            |> HttpB.withExpect (Http.expectJson <| MessageId.decoder)
+            |> HttpB.withExpect (Http.expectJson <| MessageId.envelopeDecoder)
             |> HttpB.toRequest
