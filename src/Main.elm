@@ -31,8 +31,8 @@ type PageState
 
 type alias AuthedPageState =
     { user : User.User
-    , messageIds : RemoteData.WebData MessageId.Envelope
-    , threads : RemoteData.WebData Thread.Envelope
+    , messageIds : RemoteData.RemoteData Http.Error MessageId.Envelope
+    , threads : RemoteData.RemoteData Http.Error Thread.Envelope
     }
 
 
@@ -123,8 +123,8 @@ update msg model =
 view : Model -> H.Html Msg
 view model =
     case model.state of
-        Authed { user } ->
-            mainScreen user
+        Authed state ->
+            mainScreen state
 
         NotAuthed ->
             loginScreen
@@ -143,18 +143,43 @@ loginScreen =
         ]
 
 
-mainScreen : User.User -> H.Html Msg
-mainScreen user =
-    H.div []
-        [ mainScreenHeader user
-        , H.main_ []
-            [ H.div [ HA.class "mdc-layout-grid" ]
-                [ H.div [ HA.class "mdc-layout-grid__inner" ]
-                    [ H.div [ HA.class "mdc-layout-grid__cell" ] []
+mainScreen : AuthedPageState -> H.Html Msg
+mainScreen { user, threads, messageIds } =
+    let
+        allData =
+            RemoteData.map2 (,) threads messageIds
+                |> RemoteData.map
+                    (\( threads, messageIds ) -> ( threads, messageIds ))
+
+        threadView messages thread =
+            H.div []
+                [ H.h3 [ HA.class "mdc-list-group__subheader" ] [ H.text thread.snippet ]
+                , H.ul [ HA.class "mdc-list" ]
+                    [ List.filter (\message -> message.threadId == thread.threadId) messages
+                        |> List.map (\message -> H.li [ HA.class "mdc-list-item" ] [ H.text <| toString message.messageId ])
+                        |> H.ul [ HA.class "mdc-list" ]
                     ]
                 ]
+    in
+        H.div []
+            [ mainScreenHeader user
+            , H.main_ []
+                [ C.progressBar allData
+                , case allData of
+                    RemoteData.Failure err ->
+                        C.empty
+
+                    RemoteData.Success ( { threads }, { messages } ) ->
+                        H.div [ HA.class "mdc-list-group" ]
+                            [ threads
+                                |> List.map (threadView messages)
+                                |> H.div []
+                            ]
+
+                    _ ->
+                        C.empty
+                ]
             ]
-        ]
 
 
 mainScreenHeader : User.User -> H.Html Msg

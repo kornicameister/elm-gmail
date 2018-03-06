@@ -9,7 +9,7 @@ import Data.Id as Id
 
 
 type alias Envelope =
-    { messages : List Thread
+    { threads : List Thread
     , nextPageToken : Maybe String
     , resultSizeEstimate : Int
     }
