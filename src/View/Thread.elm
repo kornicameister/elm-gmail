@@ -11,6 +11,7 @@ import Data.Token as Token
 import Data.Message as Message
 import Data.Thread as Thread
 import Request.Thread
+import Component as C
 
 
 ---- MODEL ----
@@ -32,8 +33,26 @@ view : Model -> H.Html Msg
 view model =
     H.div []
         [ H.h3 [ HA.class "mdc-list-group__subheader", HE.onClick ToggleThread ] [ H.text model.thread.snippet ]
-        , H.ul [ HA.class "mdc-list" ] [ H.ul [ HA.class "mdc-list" ] [] ]
+        , H.ul [ HA.class "mdc-list" ]
+            (case model.messages of
+                RemoteData.NotAsked ->
+                    [ C.empty ]
+
+                RemoteData.Loading ->
+                    [ C.progressBar model.messages ]
+
+                RemoteData.Failure err ->
+                    [ H.p [] [ H.text "Failed to load messages for this topic" ] ]
+
+                RemoteData.Success messages ->
+                    List.map messageView messages
+            )
         ]
+
+
+messageView : Message.Message -> H.Html msg
+messageView message =
+    H.li [ HA.class "mdc-list-item" ] [ H.text message.snippet ]
 
 
 
