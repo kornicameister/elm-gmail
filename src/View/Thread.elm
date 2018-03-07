@@ -32,18 +32,27 @@ view model =
     H.div []
         [ H.h3 [ HA.class "mdc-list-group__subheader", HE.onClick ToggleThread ] [ H.text model.thread.snippet ]
         , H.ul [ HA.class "mdc-list" ]
-            (case model.messages of
-                RemoteData.NotAsked ->
+            (case ( model.messages, model.expanded ) of
+                ( RemoteData.NotAsked, _ ) ->
                     [ C.empty ]
 
-                RemoteData.Loading ->
+                ( RemoteData.Loading, True ) ->
                     [ C.progressBar model.messages ]
 
-                RemoteData.Failure err ->
+                ( RemoteData.Loading, False ) ->
+                    [ C.empty ]
+
+                ( RemoteData.Failure err, True ) ->
                     [ H.p [] [ H.text "Failed to load messages for this topic" ] ]
 
-                RemoteData.Success messages ->
+                ( RemoteData.Failure err, False ) ->
+                    [ C.empty ]
+
+                ( RemoteData.Success messages, True ) ->
                     List.map messageView messages
+
+                ( RemoteData.Success messages, False ) ->
+                    [ C.empty ]
             )
         ]
 
