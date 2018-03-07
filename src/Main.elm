@@ -9,11 +9,11 @@ import Json.Encode as Encode
 import RemoteData
 import Component as C
 import Ports
+import Data.Id as Id
 import Data.User as User
-import Data.MessageId as MessageId
 import Data.Thread as Thread
-import Request.Message
 import Request.Thread
+import View.Thread
 
 
 ---- MODEL ----
@@ -31,8 +31,7 @@ type PageState
 
 type alias AuthedPageState =
     { user : User.User
-    , messageIds : RemoteData.WebData MessageId.Envelope
-    , threads : RemoteData.WebData Thread.Envelope
+    , threads : RemoteData.WebData (List View.Thread.Model)
     }
 
 
@@ -50,8 +49,8 @@ type Msg
     | GoogleApiSignedStatusChanged (Maybe User.User)
     | GoogleApiSignIn
     | GoogleApiSignOut
-    | MessageIdsLoaded (Result Http.Error MessageId.Envelope)
-    | ThreadsLoaded (Result Http.Error Thread.Envelope)
+    | ThreadsLoaded (Result Http.Error Thread.PageThread)
+    | ThreadViewMsg Id.ThreadId View.Thread.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -70,13 +69,10 @@ update msg model =
                         Just user ->
                             ( Authed
                                 { user = user
-                                , messageIds = RemoteData.Loading
                                 , threads = RemoteData.Loading
                                 }
                             , Cmd.batch
-                                [ Request.Message.listIds user.accessToken
-                                    |> Http.send MessageIdsLoaded
-                                , Request.Thread.list user.accessToken
+                                [ Request.Thread.list user.accessToken
                                     |> Http.send ThreadsLoaded
                                 ]
                             )
@@ -95,24 +91,56 @@ update msg model =
         ( GoogleApiSignOut, NotAuthed ) ->
             ( model, Cmd.none )
 
-        ( MessageIdsLoaded result, Authed state ) ->
-            ( { model
-                | state = Authed { state | messageIds = RemoteData.fromResult result }
-              }
-            , Cmd.none
-            )
-
-        ( MessageIdsLoaded result, NotAuthed ) ->
-            ( model, Cmd.none )
-
         ( ThreadsLoaded result, Authed state ) ->
-            ( { model
-                | state = Authed { state | threads = RemoteData.fromResult result }
-              }
-            , Cmd.none
-            )
+            let
+                newThreads =
+                    RemoteData.fromResult result
+                        |> RemoteData.map
+                            (\{ threads } ->
+                                List.map
+                                    (\thread ->
+                                        ({ token = state.user.accessToken
+                                         , thread = thread
+                                         , messages = RemoteData.NotAsked
+                                         , expanded = False
+                                         }
+                                        )
+                                    )
+                                    threads
+                            )
+            in
+                ( { model | state = Authed { state | threads = newThreads } }, Cmd.none )
 
         ( ThreadsLoaded result, NotAuthed ) ->
+            ( model, Cmd.none )
+
+        ( ThreadViewMsg threadId viewMsg, Authed state ) ->
+            case state.threads of
+                RemoteData.Success threadModels ->
+                    let
+                        ( newThreadModels, newThreadCmds ) =
+                            List.map
+                                (\t ->
+                                    case t.thread.threadId == threadId of
+                                        True ->
+                                            View.Thread.update viewMsg t
+
+                                        False ->
+                                            ( t, Cmd.none )
+                                )
+                                threadModels
+                                |> List.unzip
+
+                        mappedCmds =
+                            List.map (\cmd -> cmd |> Cmd.map (ThreadViewMsg threadId)) newThreadCmds
+                                |> Cmd.batch
+                    in
+                        ( { model | state = Authed { state | threads = RemoteData.succeed newThreadModels } }, mappedCmds )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        ( ThreadViewMsg _ _, NotAuthed ) ->
             ( model, Cmd.none )
 
 
@@ -123,8 +151,8 @@ update msg model =
 view : Model -> H.Html Msg
 view model =
     case model.state of
-        Authed { user } ->
-            mainScreen user
+        Authed state ->
+            mainScreen state
 
         NotAuthed ->
             loginScreen
@@ -143,18 +171,34 @@ loginScreen =
         ]
 
 
-mainScreen : User.User -> H.Html Msg
-mainScreen user =
-    H.div []
-        [ mainScreenHeader user
-        , H.main_ []
-            [ H.div [ HA.class "mdc-layout-grid" ]
-                [ H.div [ HA.class "mdc-layout-grid__inner" ]
-                    [ H.div [ HA.class "mdc-layout-grid__cell" ] []
-                    ]
+mainScreen : AuthedPageState -> H.Html Msg
+mainScreen state =
+    let
+        threadView thread =
+            H.div []
+                [ H.h3 [ HA.class "mdc-list-group__subheader" ] [ H.text thread.snippet ]
+                , H.ul [ HA.class "mdc-list" ] [ H.ul [ HA.class "mdc-list" ] [] ]
+                ]
+    in
+        H.div []
+            [ mainScreenHeader state.user
+            , H.main_ []
+                [ C.progressBar state.threads
+                , case state.threads of
+                    RemoteData.Success threadModels ->
+                        threadModels
+                            |> List.map
+                                (\threadModel ->
+                                    View.Thread.view threadModel
+                                        |> H.map
+                                            (ThreadViewMsg threadModel.thread.threadId)
+                                )
+                            |> H.div [ HA.class "mdc-list-group" ]
+
+                    _ ->
+                        C.empty
                 ]
             ]
-        ]
 
 
 mainScreenHeader : User.User -> H.Html Msg
@@ -191,16 +235,9 @@ subscriptions model =
 
 decodeUser : Encode.Value -> Msg
 decodeUser x =
-    let
-        result =
-            Decode.decodeValue (Decode.nullable User.decoder) x
-    in
-        case result of
-            Ok maybeUser ->
-                GoogleApiSignedStatusChanged maybeUser
-
-            Err _ ->
-                GoogleApiSignedStatusChanged Nothing
+    Decode.decodeValue (Decode.nullable User.decoder) x
+        |> Result.withDefault Nothing
+        |> GoogleApiSignedStatusChanged
 
 
 

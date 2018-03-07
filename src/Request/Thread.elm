@@ -1,13 +1,14 @@
-module Request.Thread exposing (list)
+module Request.Thread exposing (list, one)
 
 import Http
 import HttpBuilder as HttpB
 import Config
+import Data.Id as Id
 import Data.Thread as Thread
 import Data.Token as Token
 
 
-list : Token.Token -> Http.Request Thread.Envelope
+list : Token.Token -> Http.Request Thread.PageThread
 list token =
     let
         url =
@@ -15,5 +16,17 @@ list token =
     in
         HttpB.get url
             |> Token.withAuthorizationHeader (Just token)
-            |> HttpB.withExpect (Http.expectJson <| Thread.decoder)
+            |> HttpB.withExpect (Http.expectJson <| Thread.pageThreadDecoder)
+            |> HttpB.toRequest
+
+
+one : Token.Token -> Id.ThreadId -> Http.Request Thread.FullThread
+one token id =
+    let
+        url =
+            String.join "/" [ Config.threadsUrl, Id.threadIdAsString id ]
+    in
+        HttpB.get url
+            |> Token.withAuthorizationHeader (Just token)
+            |> HttpB.withExpect (Http.expectJson <| Thread.fullThreadDecoder)
             |> HttpB.toRequest

@@ -4,6 +4,8 @@
   "version": "0.0.1",
   "private": true,
   "dependencies": {
+    "elm": "^0.18.0",
+    "elm-format": "^0.6.1-alpha",
     "material-components-web": "^0.31.0"
   }
 }

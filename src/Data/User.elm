@@ -2,7 +2,6 @@ module Data.User exposing (User, decoder)
 
 import Json.Decode as Decode
 import Json.Decode.Pipeline as DecodeP
-
 import Data.Token as Token
 
 
@@ -13,7 +12,7 @@ type alias User =
     { name : String
     , email : String
     , imageUrl : String
-    , accessToken: Token.Token
+    , accessToken : Token.Token
     }
 
 
