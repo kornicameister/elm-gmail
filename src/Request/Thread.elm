@@ -8,7 +8,7 @@ import Data.Thread as Thread
 import Data.Token as Token
 
 
-list : Token.Token -> Http.Request Thread.Envelope
+list : Token.Token -> Http.Request Thread.PageThread
 list token =
     let
         url =
@@ -16,11 +16,11 @@ list token =
     in
         HttpB.get url
             |> Token.withAuthorizationHeader (Just token)
-            |> HttpB.withExpect (Http.expectJson <| Thread.envelopeDecoder)
+            |> HttpB.withExpect (Http.expectJson <| Thread.pageThreadDecoder)
             |> HttpB.toRequest
 
 
-one : Token.Token -> Id.ThreadId -> Http.Request Thread.ThreadWithMessages
+one : Token.Token -> Id.ThreadId -> Http.Request Thread.FullThread
 one token id =
     let
         url =
@@ -28,5 +28,5 @@ one token id =
     in
         HttpB.get url
             |> Token.withAuthorizationHeader (Just token)
-            |> HttpB.withExpect (Http.expectJson <| Thread.decoderWithMessages)
+            |> HttpB.withExpect (Http.expectJson <| Thread.fullThreadDecoder)
             |> HttpB.toRequest

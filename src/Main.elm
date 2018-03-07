@@ -49,7 +49,7 @@ type Msg
     | GoogleApiSignedStatusChanged (Maybe User.User)
     | GoogleApiSignIn
     | GoogleApiSignOut
-    | ThreadsLoaded (Result Http.Error Thread.Envelope)
+    | ThreadsLoaded (Result Http.Error Thread.PageThread)
     | ThreadViewMsg Id.ThreadId View.Thread.Msg
 
 

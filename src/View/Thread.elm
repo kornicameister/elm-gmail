@@ -4,9 +4,7 @@ import Html as H
 import Html.Attributes as HA
 import Html.Events as HE
 import Http
-import Task
 import RemoteData
-import Data.Id as Id
 import Data.Token as Token
 import Data.Message as Message
 import Data.Thread as Thread
@@ -19,7 +17,7 @@ import Component as C
 
 type alias Model =
     { token : Token.Token
-    , thread : Thread.Thread
+    , thread : Thread.SlimThread
     , messages : RemoteData.WebData (List Message.Message)
     , expanded : Bool
     }
@@ -61,7 +59,7 @@ messageView message =
 
 type Msg
     = ToggleThread
-    | ThreadMessagesLoaded (Result Http.Error Thread.ThreadWithMessages)
+    | ThreadMessagesLoaded (Result Http.Error Thread.FullThread)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
