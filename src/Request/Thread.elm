@@ -25,7 +25,7 @@ one : Token.Token -> Id.ThreadId -> Http.Request (Thread.Thread (List Message.Me
 one token id =
     let
         url =
-            String.join "/" [ Config.messagesUrl, Id.threadIdAsString id ]
+            String.join "/" [ Config.threadsUrl, Id.threadIdAsString id ]
     in
         HttpB.get url
             |> Token.withAuthorizationHeader (Just token)

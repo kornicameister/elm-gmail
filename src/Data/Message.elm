@@ -11,10 +11,15 @@ import Data.Id as Id
 type alias Message =
     { messageId : Id.MessageId
     , threadId : Id.ThreadId
-    , labelIds : List Id.LabelId
     , historyId : Id.HistoryId
+    , labelIds : List Id.LabelId
     , snippet : String
+    , payload : Payload
     }
+
+
+type alias Payload =
+    { partId : String }
 
 
 
@@ -23,9 +28,15 @@ type alias Message =
 
 decoder : Decode.Decoder Message
 decoder =
-    DecodeP.decode Message
-        |> DecodeP.required "messageId" Id.messageIdDecoder
-        |> DecodeP.required "threadId" Id.threadIdDecoder
-        |> DecodeP.required "labelIds" (Decode.list Id.labelIdDecoder)
-        |> DecodeP.required "historyId" Id.historyIdDecoder
-        |> DecodeP.required "snippet" Decode.string
+    let
+        payloadDecoder =
+            DecodeP.decode Payload
+                |> DecodeP.required "partId" Decode.string
+    in
+        DecodeP.decode Message
+            |> DecodeP.required "id" Id.messageIdDecoder
+            |> DecodeP.required "threadId" Id.threadIdDecoder
+            |> DecodeP.required "historyId" Id.historyIdDecoder
+            |> DecodeP.required "labelIds" (Decode.list Id.labelIdDecoder)
+            |> DecodeP.required "snippet" Decode.string
+            |> DecodeP.required "payload" payloadDecoder

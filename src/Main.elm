@@ -9,6 +9,7 @@ import Json.Encode as Encode
 import RemoteData
 import Component as C
 import Ports
+import Data.Id as Id
 import Data.User as User
 import Data.Thread as Thread
 import Request.Thread
@@ -49,7 +50,7 @@ type Msg
     | GoogleApiSignIn
     | GoogleApiSignOut
     | ThreadsLoaded (Result Http.Error Thread.Envelope)
-    | ThreadViewMsg View.Thread.Msg
+    | ThreadViewMsg Id.ThreadId View.Thread.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -92,37 +93,54 @@ update msg model =
 
         ( ThreadsLoaded result, Authed state ) ->
             let
-                ( threads, cmd ) =
-                    case RemoteData.fromResult result of
-                        RemoteData.NotAsked ->
-                            ( RemoteData.NotAsked, Cmd.none )
-
-                        RemoteData.Loading ->
-                            ( RemoteData.Loading, Cmd.none )
-
-                        RemoteData.Failure error ->
-                            ( RemoteData.Failure error, Cmd.none )
-
-                        RemoteData.Success { threads } ->
-                            ( List.map
-                                (\thread -> RemoteData.Loading)
-                                threads
-                                |> RemoteData.Success
-                            , Cmd.batch
-                                [
-                                    List.map (\thread -> View.Thread.init state.user.accessToken thread.threadId) threads
-                                ]
+                newThreads =
+                    RemoteData.fromResult result
+                        |> RemoteData.map
+                            (\{ threads } ->
+                                List.map
+                                    (\thread ->
+                                        ({ token = state.user.accessToken
+                                         , thread = thread
+                                         , messages = RemoteData.NotAsked
+                                         , expanded = False
+                                         }
+                                        )
+                                    )
+                                    threads
                             )
             in
-                ( { model | state = Authed { state | threads = RemoteData.Loading } }, cmd )
+                ( { model | state = Authed { state | threads = newThreads } }, Cmd.none )
 
         ( ThreadsLoaded result, NotAuthed ) ->
             ( model, Cmd.none )
 
-        ( ThreadViewMsg msg, Authed _ ) ->
-            ( model, Cmd.none )
+        ( ThreadViewMsg threadId viewMsg, Authed state ) ->
+            case state.threads of
+                RemoteData.Success threadModels ->
+                    let
+                        ( newThreadModels, newThreadCmds ) =
+                            List.map
+                                (\t ->
+                                    case t.thread.threadId == threadId of
+                                        True ->
+                                            View.Thread.update viewMsg t
 
-        ( ThreadViewMsg msg, NotAuthed ) ->
+                                        False ->
+                                            ( t, Cmd.none )
+                                )
+                                threadModels
+                                |> List.unzip
+
+                        mappedCmds =
+                            List.map (\cmd -> cmd |> Cmd.map (ThreadViewMsg threadId)) newThreadCmds
+                                |> Cmd.batch
+                    in
+                        ( { model | state = Authed { state | threads = RemoteData.succeed newThreadModels } }, mappedCmds )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        ( ThreadViewMsg _ _, NotAuthed ) ->
             ( model, Cmd.none )
 
 
@@ -167,14 +185,15 @@ mainScreen state =
             , H.main_ []
                 [ C.progressBar state.threads
                 , case state.threads of
-                    RemoteData.Failure err ->
-                        C.empty
-
                     RemoteData.Success threadModels ->
                         threadModels
-                            |> List.map View.Thread.view
+                            |> List.map
+                                (\threadModel ->
+                                    View.Thread.view threadModel
+                                        |> H.map
+                                            (ThreadViewMsg threadModel.thread.threadId)
+                                )
                             |> H.div [ HA.class "mdc-list-group" ]
-                            |> H.map ThreadViewMsg
 
                     _ ->
                         C.empty
