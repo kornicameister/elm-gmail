@@ -18,7 +18,7 @@ import Request.Thread
 
 type alias Model =
     { token : Token.Token
-    , thread : Thread.Thread ()
+    , thread : Thread.Thread
     , messages : RemoteData.WebData (List Message.Message)
     , expanded : Bool
     }
@@ -42,7 +42,7 @@ view model =
 
 type Msg
     = ToggleThread
-    | ThreadMessagesLoaded (Result Http.Error (Thread.Thread (List Message.Message)))
+    | ThreadMessagesLoaded (Result Http.Error Thread.ThreadWithMessages)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )

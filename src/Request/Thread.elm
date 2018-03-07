@@ -4,7 +4,6 @@ import Http
 import HttpBuilder as HttpB
 import Config
 import Data.Id as Id
-import Data.Message as Message
 import Data.Thread as Thread
 import Data.Token as Token
 
@@ -21,7 +20,7 @@ list token =
             |> HttpB.toRequest
 
 
-one : Token.Token -> Id.ThreadId -> Http.Request (Thread.Thread (List Message.Message))
+one : Token.Token -> Id.ThreadId -> Http.Request Thread.ThreadWithMessages
 one token id =
     let
         url =

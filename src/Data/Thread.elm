@@ -1,4 +1,4 @@
-module Data.Thread exposing (Envelope, Thread, decoder, decoderWithMessages, envelopeDecoder)
+module Data.Thread exposing (Envelope, Thread, ThreadWithMessages, decoder, decoderWithMessages, envelopeDecoder)
 
 import Json.Decode as Decode
 import Json.Decode.Pipeline as DecodeP
@@ -9,16 +9,22 @@ import Data.Message as Message
 ---- MODEL ----
 
 
-type alias Thread a =
+type alias Thread =
     { threadId : Id.ThreadId
     , historyId : Id.HistoryId
     , snippet : String
-    , messages : a
+    }
+
+
+type alias ThreadWithMessages =
+    { threadId : Id.ThreadId
+    , historyId : Id.HistoryId
+    , messages : List Message.Message
     }
 
 
 type alias Envelope =
-    { threads : List (Thread ())
+    { threads : List Thread
     , nextPageToken : Maybe String
     , resultSizeEstimate : Int
     }
@@ -28,24 +34,20 @@ type alias Envelope =
 ---- SERIALIZATION
 
 
-decoder : Decode.Decoder (Thread ())
+decoder : Decode.Decoder Thread
 decoder =
-    baseDecoder
-        |> DecodeP.hardcoded ()
-
-
-decoderWithMessages : Decode.Decoder (Thread (List Message.Message))
-decoderWithMessages =
-    baseDecoder
-        |> DecodeP.required "messages" (Decode.list Message.decoder)
-
-
-baseDecoder : Decode.Decoder (a -> Thread a)
-baseDecoder =
     DecodeP.decode Thread
         |> DecodeP.required "id" Id.threadIdDecoder
         |> DecodeP.required "historyId" Id.historyIdDecoder
         |> DecodeP.required "snippet" Decode.string
+
+
+decoderWithMessages : Decode.Decoder ThreadWithMessages
+decoderWithMessages =
+    DecodeP.decode ThreadWithMessages
+        |> DecodeP.required "id" Id.threadIdDecoder
+        |> DecodeP.required "historyId" Id.historyIdDecoder
+        |> DecodeP.required "messages" (Decode.list Message.decoder)
 
 
 envelopeDecoder : Decode.Decoder Envelope
