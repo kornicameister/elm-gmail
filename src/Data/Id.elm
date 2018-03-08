@@ -9,6 +9,8 @@ module Data.Id
         , historyIdDecoder
         , LabelId
         , labelIdDecoder
+        , AttachmentId
+        , attachmentIdDecoder
         )
 
 import Json.Decode as Decode
@@ -28,6 +30,10 @@ type HistoryId
 
 type LabelId
     = LabelId String
+
+
+type AttachmentId
+    = AttachmentId String
 
 
 messageIdDecoder : Decode.Decoder MessageId
@@ -53,3 +59,8 @@ historyIdDecoder =
 labelIdDecoder : Decode.Decoder LabelId
 labelIdDecoder =
     Decode.map LabelId Decode.string
+
+
+attachmentIdDecoder : Decode.Decoder AttachmentId
+attachmentIdDecoder =
+    Decode.map AttachmentId Decode.string
