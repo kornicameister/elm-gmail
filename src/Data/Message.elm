@@ -1,8 +1,8 @@
 module Data.Message exposing (Message, decoder)
 
+import Data.Id as Id
 import Json.Decode as Decode
 import Json.Decode.Pipeline as DecodeP
-import Data.Id as Id
 
 
 ---- MODEL ----
@@ -105,7 +105,7 @@ decoder =
                     (Decode.string
                         |> Decode.andThen
                             (\str ->
-                                case (String.toInt str) of
+                                case String.toInt str of
                                     Ok number ->
                                         Decode.succeed number
 
@@ -125,12 +125,12 @@ decoder =
                 |> DecodeP.required "filename" emptyStringAsNothingDecoder
                 |> DecodeP.required "headers" headersDecoder
                 |> DecodeP.required "body" bodyDecoder
-                |> DecodeP.optional "parts" ((Decode.list partDecoder) |> Decode.map Parts) NoParts
+                |> DecodeP.optional "parts" (Decode.list partDecoder |> Decode.map Parts) NoParts
     in
-        DecodeP.decode Message
-            |> DecodeP.required "id" Id.messageIdDecoder
-            |> DecodeP.required "threadId" Id.threadIdDecoder
-            |> DecodeP.required "historyId" Id.historyIdDecoder
-            |> DecodeP.required "labelIds" (Decode.list Id.labelIdDecoder)
-            |> DecodeP.required "snippet" Decode.string
-            |> DecodeP.required "payload" payloadDecoder
+    DecodeP.decode Message
+        |> DecodeP.required "id" Id.messageIdDecoder
+        |> DecodeP.required "threadId" Id.threadIdDecoder
+        |> DecodeP.required "historyId" Id.historyIdDecoder
+        |> DecodeP.required "labelIds" (Decode.list Id.labelIdDecoder)
+        |> DecodeP.required "snippet" Decode.string
+        |> DecodeP.required "payload" payloadDecoder

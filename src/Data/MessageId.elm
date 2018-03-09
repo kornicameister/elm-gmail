@@ -1,8 +1,8 @@
 module Data.MessageId exposing (Envelope, MessageId, decoder, envelopeDecoder)
 
+import Data.Id as Id
 import Json.Decode as Decode
 import Json.Decode.Pipeline as DecodeP
-import Data.Id as Id
 
 
 ---- MODEL ----

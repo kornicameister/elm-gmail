@@ -1,9 +1,9 @@
-module Data.Thread exposing (Thread(..), SlimThread, FullThread, PageThread, decoder, slimThreadDecoder, fullThreadDecoder, pageThreadDecoder)
+module Data.Thread exposing (FullThread, PageThread, SlimThread, Thread(..), decoder, fullThreadDecoder, pageThreadDecoder, slimThreadDecoder)
 
-import Json.Decode as Decode
-import Json.Decode.Pipeline as DecodeP
 import Data.Id as Id
 import Data.Message as Message
+import Json.Decode as Decode
+import Json.Decode.Pipeline as DecodeP
 
 
 ---- MODEL ----

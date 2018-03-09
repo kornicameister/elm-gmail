@@ -1,15 +1,15 @@
-module View.Thread exposing (Model, view, Msg, update)
+module View.Thread exposing (Model, Msg, update, view)
 
+import Component as C
+import Data.Message as Message
+import Data.Thread as Thread
+import Data.Token as Token
 import Html as H
 import Html.Attributes as HA
 import Html.Events as HE
 import Http
 import RemoteData
-import Data.Token as Token
-import Data.Message as Message
-import Data.Thread as Thread
 import Request.Thread
-import Component as C
 
 
 ---- MODEL ----
@@ -83,14 +83,13 @@ update msg model =
 
                         False ->
                             ( True
-                            , (case model.messages of
+                            , case model.messages of
                                 RemoteData.NotAsked ->
                                     RemoteData.Loading
 
                                 _ ->
                                     model.messages
-                              )
-                            , (case model.messages of
+                            , case model.messages of
                                 RemoteData.NotAsked ->
                                     Cmd.batch
                                         [ Request.Thread.one model.token model.thread.threadId
@@ -99,10 +98,9 @@ update msg model =
 
                                 _ ->
                                     Cmd.none
-                              )
                             )
             in
-                ( { model | expanded = newExpanded, messages = newMessages }, cmd )
+            ( { model | expanded = newExpanded, messages = newMessages }, cmd )
 
         ThreadMessagesLoaded result ->
             case result of

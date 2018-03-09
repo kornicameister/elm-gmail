@@ -1,8 +1,8 @@
 module Data.User exposing (User, decoder)
 
+import Data.Token as Token
 import Json.Decode as Decode
 import Json.Decode.Pipeline as DecodeP
-import Data.Token as Token
 
 
 ---- MODEL ----

@@ -1,16 +1,16 @@
 module Data.Id
     exposing
-        ( MessageId
-        , messageIdDecoder
-        , ThreadId
-        , threadIdDecoder
-        , threadIdAsString
+        ( AttachmentId
         , HistoryId
-        , historyIdDecoder
         , LabelId
-        , labelIdDecoder
-        , AttachmentId
+        , MessageId
+        , ThreadId
         , attachmentIdDecoder
+        , historyIdDecoder
+        , labelIdDecoder
+        , messageIdDecoder
+        , threadIdAsString
+        , threadIdDecoder
         )
 
 import Json.Decode as Decode

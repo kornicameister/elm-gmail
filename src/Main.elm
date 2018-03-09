@@ -1,17 +1,17 @@
 module Main exposing (..)
 
-import Http
+import Component as C
+import Data.Id as Id
+import Data.Thread as Thread
+import Data.User as User
 import Html as H
 import Html.Attributes as HA
 import Html.Events as HE
+import Http
 import Json.Decode as Decode
 import Json.Encode as Encode
-import RemoteData
-import Component as C
 import Ports
-import Data.Id as Id
-import Data.User as User
-import Data.Thread as Thread
+import RemoteData
 import Request.Thread
 import View.Thread
 
@@ -77,7 +77,7 @@ update msg model =
                                 ]
                             )
             in
-                ( { model | state = state }, nextCommand )
+            ( { model | state = state }, nextCommand )
 
         ( GoogleApiSignIn, NotAuthed ) ->
             ( model, Ports.gApiSignIn () )
@@ -99,17 +99,16 @@ update msg model =
                             (\{ threads } ->
                                 List.map
                                     (\thread ->
-                                        ({ token = state.user.accessToken
-                                         , thread = thread
-                                         , messages = RemoteData.NotAsked
-                                         , expanded = False
-                                         }
-                                        )
+                                        { token = state.user.accessToken
+                                        , thread = thread
+                                        , messages = RemoteData.NotAsked
+                                        , expanded = False
+                                        }
                                     )
                                     threads
                             )
             in
-                ( { model | state = Authed { state | threads = newThreads } }, Cmd.none )
+            ( { model | state = Authed { state | threads = newThreads } }, Cmd.none )
 
         ( ThreadsLoaded result, NotAuthed ) ->
             ( model, Cmd.none )
@@ -135,7 +134,7 @@ update msg model =
                             List.map (\cmd -> cmd |> Cmd.map (ThreadViewMsg threadId)) newThreadCmds
                                 |> Cmd.batch
                     in
-                        ( { model | state = Authed { state | threads = RemoteData.succeed newThreadModels } }, mappedCmds )
+                    ( { model | state = Authed { state | threads = RemoteData.succeed newThreadModels } }, mappedCmds )
 
                 _ ->
                     ( model, Cmd.none )
@@ -180,25 +179,25 @@ mainScreen state =
                 , H.ul [ HA.class "mdc-list" ] [ H.ul [ HA.class "mdc-list" ] [] ]
                 ]
     in
-        H.div []
-            [ mainScreenHeader state.user
-            , H.main_ []
-                [ C.progressBar state.threads
-                , case state.threads of
-                    RemoteData.Success threadModels ->
-                        threadModels
-                            |> List.map
-                                (\threadModel ->
-                                    View.Thread.view threadModel
-                                        |> H.map
-                                            (ThreadViewMsg threadModel.thread.threadId)
-                                )
-                            |> H.div [ HA.class "mdc-list-group" ]
+    H.div []
+        [ mainScreenHeader state.user
+        , H.main_ []
+            [ C.progressBar state.threads
+            , case state.threads of
+                RemoteData.Success threadModels ->
+                    threadModels
+                        |> List.map
+                            (\threadModel ->
+                                View.Thread.view threadModel
+                                    |> H.map
+                                        (ThreadViewMsg threadModel.thread.threadId)
+                            )
+                        |> H.div [ HA.class "mdc-list-group" ]
 
-                    _ ->
-                        C.empty
-                ]
+                _ ->
+                    C.empty
             ]
+        ]
 
 
 mainScreenHeader : User.User -> H.Html Msg
@@ -230,7 +229,7 @@ mainScreenHeader user =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Ports.gApiIsSignedIn (decodeUser)
+    Ports.gApiIsSignedIn decodeUser
 
 
 decodeUser : Encode.Value -> Msg
