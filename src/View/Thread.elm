@@ -18,7 +18,7 @@ import Request.Thread
 
 type alias Model =
     { token : Token.Token
-    , thread : Thread.SlimThread
+    , thread : Thread.Thread
     , messages : RemoteData.WebData (List Message.Message)
     , expanded : Bool
     }
@@ -69,7 +69,7 @@ messageView message =
 
 type Msg
     = ToggleThread
-    | ThreadMessagesLoaded (Result Http.Error Thread.FullThread)
+    | ThreadWithMessagesLoaded (Result Http.Error Thread.WithMessages)
     | MessagesLoaded (Result Http.Error (List Message.Message))
 
 
@@ -82,14 +82,14 @@ update msg model =
                 RemoteData.NotAsked ->
                     Cmd.batch
                         [ Request.Thread.one model.token model.thread.threadId
-                            |> Http.send ThreadMessagesLoaded
+                            |> Http.send ThreadWithMessagesLoaded
                         ]
 
                 _ ->
                     Cmd.none
             )
 
-        ThreadMessagesLoaded result ->
+        ThreadWithMessagesLoaded result ->
             case result of
                 Ok { messages } ->
                     ( { model | messages = RemoteData.Loading }

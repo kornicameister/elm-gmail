@@ -1,4 +1,4 @@
-module Data.Thread exposing (FullThread, PageThread, SlimThread, Thread(..), decoder, fullThreadDecoder, pageThreadDecoder, slimThreadDecoder)
+module Data.Thread exposing (Page, Thread, WithMessages, decoder, decoderWithMessages, pageDecoder)
 
 import Data.Id as Id
 import Data.Message as Message
@@ -9,22 +9,16 @@ import Json.Decode.Pipeline as DecodeP
 ---- MODEL ----
 
 
-type Thread
-    = Slim SlimThread
-    | Full FullThread
-    | Page PageThread
-
-
-type alias SlimThread =
+type alias Thread =
     { threadId : Id.ThreadId, historyId : Id.HistoryId, snippet : String }
 
 
-type alias FullThread =
+type alias WithMessages =
     { threadId : Id.ThreadId, historyId : Id.HistoryId, messages : List Message.Message }
 
 
-type alias PageThread =
-    { threads : List SlimThread
+type alias Page =
+    { threads : List Thread
     , nextPageToken : Maybe String
     , resultSizeEstimate : Int
     }
@@ -36,32 +30,23 @@ type alias PageThread =
 
 decoder : Decode.Decoder Thread
 decoder =
-    Decode.oneOf
-        [ slimThreadDecoder |> Decode.map Slim
-        , fullThreadDecoder |> Decode.map Full
-        , pageThreadDecoder |> Decode.map Page
-        ]
-
-
-slimThreadDecoder : Decode.Decoder SlimThread
-slimThreadDecoder =
-    DecodeP.decode SlimThread
+    DecodeP.decode Thread
         |> DecodeP.required "id" Id.threadIdDecoder
         |> DecodeP.required "historyId" Id.historyIdDecoder
         |> DecodeP.required "snippet" Decode.string
 
 
-fullThreadDecoder : Decode.Decoder FullThread
-fullThreadDecoder =
-    DecodeP.decode FullThread
+decoderWithMessages : Decode.Decoder WithMessages
+decoderWithMessages =
+    DecodeP.decode WithMessages
         |> DecodeP.required "id" Id.threadIdDecoder
         |> DecodeP.required "historyId" Id.historyIdDecoder
         |> DecodeP.required "messages" (Decode.list Message.decoder)
 
 
-pageThreadDecoder : Decode.Decoder PageThread
-pageThreadDecoder =
-    DecodeP.decode PageThread
-        |> DecodeP.required "threads" (Decode.list slimThreadDecoder)
+pageDecoder : Decode.Decoder Page
+pageDecoder =
+    DecodeP.decode Page
+        |> DecodeP.required "threads" (Decode.list decoder)
         |> DecodeP.required "nextPageToken" (Decode.nullable Decode.string)
         |> DecodeP.required "resultSizeEstimate" Decode.int
