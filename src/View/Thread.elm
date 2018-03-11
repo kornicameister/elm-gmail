@@ -77,32 +77,17 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         ToggleThread ->
-            let
-                ( newExpanded, newMessages, cmd ) =
-                    case model.expanded of
-                        True ->
-                            ( False, model.messages, Cmd.none )
+            ( { model | expanded = not model.expanded }
+            , case model.messages of
+                RemoteData.NotAsked ->
+                    Cmd.batch
+                        [ Request.Thread.one model.token model.thread.threadId
+                            |> Http.send ThreadMessagesLoaded
+                        ]
 
-                        False ->
-                            ( True
-                            , case model.messages of
-                                RemoteData.NotAsked ->
-                                    RemoteData.Loading
-
-                                _ ->
-                                    model.messages
-                            , case model.messages of
-                                RemoteData.NotAsked ->
-                                    Cmd.batch
-                                        [ Request.Thread.one model.token model.thread.threadId
-                                            |> Http.send ThreadMessagesLoaded
-                                        ]
-
-                                _ ->
-                                    Cmd.none
-                            )
-            in
-            ( { model | expanded = newExpanded, messages = newMessages }, cmd )
+                _ ->
+                    Cmd.none
+            )
 
         ThreadMessagesLoaded result ->
             case result of
