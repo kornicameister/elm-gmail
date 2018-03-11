@@ -9,6 +9,7 @@ import Html.Attributes as HA
 import Html.Events as HE
 import Http
 import RemoteData
+import Request.Message
 import Request.Thread
 
 
@@ -69,6 +70,7 @@ messageView message =
 type Msg
     = ToggleThread
     | ThreadMessagesLoaded (Result Http.Error Thread.FullThread)
+    | MessagesLoaded (Result Http.Error (List Message.Message))
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -105,7 +107,18 @@ update msg model =
         ThreadMessagesLoaded result ->
             case result of
                 Ok { messages } ->
-                    ( { model | messages = RemoteData.succeed messages }, Cmd.none )
+                    ( { model | messages = RemoteData.Loading }
+                    , Request.Message.many model.token (List.map .messageId messages)
+                        |> Http.send MessagesLoaded
+                    )
 
                 Err err ->
                     ( { model | messages = result |> Result.map (always []) |> RemoteData.fromResult }, Cmd.none )
+
+        MessagesLoaded results ->
+            case results of
+                Ok messages ->
+                    ( { model | messages = RemoteData.succeed messages }, Cmd.none )
+
+                Err err ->
+                    ( { model | messages = results |> Result.map (always []) |> RemoteData.fromResult }, Cmd.none )

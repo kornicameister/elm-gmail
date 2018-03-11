@@ -8,6 +8,7 @@ module Data.Id
         , attachmentIdDecoder
         , historyIdDecoder
         , labelIdDecoder
+        , messageIdAsString
         , messageIdDecoder
         , threadIdAsString
         , threadIdDecoder
@@ -39,6 +40,11 @@ type AttachmentId
 messageIdDecoder : Decode.Decoder MessageId
 messageIdDecoder =
     Decode.map MessageId Decode.string
+
+
+messageIdAsString : MessageId -> String
+messageIdAsString (MessageId str) =
+    str
 
 
 threadIdDecoder : Decode.Decoder ThreadId
