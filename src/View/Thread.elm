@@ -93,7 +93,7 @@ update msg model =
             case result of
                 Ok { messages } ->
                     ( { model | messages = RemoteData.Loading }
-                    , Request.Message.many model.token (List.map .messageId messages)
+                    , Request.Message.many model.token { ids = List.map .messageId messages, format = Request.Message.Raw }
                         |> Http.send MessagesLoaded
                     )
 

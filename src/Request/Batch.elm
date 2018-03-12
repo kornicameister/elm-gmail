@@ -1,4 +1,4 @@
-module Request.Batch exposing (batchGET)
+module Request.Batch exposing (HttpMethod(..), batch)
 
 import Config
 import Data.Token as Token
@@ -11,6 +11,8 @@ import Regex
 type alias BatchRequestConfig =
     { method : HttpMethod
     , url : String
+    , headers : List ( String, String )
+    , params : List ( String, String )
     }
 
 
@@ -51,9 +53,21 @@ responseDecoder decoder { body } =
     Decode.decodeString decoder arrayBody
 
 
-batchGET : Token.Token -> List String -> Decode.Decoder a -> Http.Request (List a)
-batchGET token urls decoder =
-    batch token (List.map (\url -> { url = url, method = GET }) urls) decoder
+makeUrl : String -> List ( String, String ) -> String
+makeUrl baseUrl params =
+    let
+        queryPair ( key, value ) =
+            queryEscape key ++ "=" ++ queryEscape value
+
+        queryEscape string =
+            String.join "+" (String.split "%20" (Http.encodeUri string))
+    in
+    case params of
+        [] ->
+            baseUrl
+
+        _ ->
+            baseUrl ++ "?" ++ String.join "&" (List.map queryPair params)
 
 
 batch : Token.Token -> List BatchRequestConfig -> Decode.Decoder a -> Http.Request (List a)
@@ -76,7 +90,8 @@ batch token requestConfigs decoder =
                     , String.concat [ "Content-Transfer-Encoding", ": ", "binary" ]
                     , String.concat [ "Content-ID", ": ", toString index ]
                     , ""
-                    , String.concat [ methodAsString req.method, " ", req.url ]
+                    , String.concat [ methodAsString req.method, " ", makeUrl req.url req.params ]
+                    , List.map (\x -> String.concat [ Tuple.first x, ": ", Tuple.second x ]) req.headers |> String.join "\n"
                     , ""
                     ]
                 )

@@ -1,4 +1,4 @@
-module Request.Message exposing (listIds, many)
+module Request.Message exposing (Format(..), listIds, many)
 
 import Config
 import Data.Id as Id
@@ -21,6 +21,39 @@ listIds token =
         |> HttpB.toRequest
 
 
-many : Token.Token -> List Id.MessageId -> Http.Request (List Message.Message)
-many token ids =
-    Request.Batch.batchGET token (List.map (\id -> String.concat [ Config.messagesUrl, "/", Id.messageIdAsString id ]) ids) Message.decoder
+type Format
+    = Minimal
+    | Metadata
+    | Full
+    | Raw
+
+
+many : Token.Token -> { ids : List Id.MessageId, format : Format } -> Http.Request (List Message.Message)
+many token { ids, format } =
+    let
+        formatAsString format =
+            case format of
+                Minimal ->
+                    "minimal"
+
+                Metadata ->
+                    "metadata"
+
+                Full ->
+                    "full"
+
+                Raw ->
+                    "raw"
+
+        configs =
+            List.map
+                (\id ->
+                    { url = String.concat [ Config.messagesUrl, "/", Id.messageIdAsString id ]
+                    , method = Request.Batch.GET
+                    , params = [ ( "format", formatAsString format ) ]
+                    , headers = [ ( "Content-Type", "application/json" ) ]
+                    }
+                )
+                ids
+    in
+    Request.Batch.batch token configs Message.decoder
