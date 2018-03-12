@@ -1,4 +1,4 @@
-module Data.Message exposing (Message, decoder)
+module Data.Message exposing (Key, Message, Page, decoder, keyDecoder, pageDecoder)
 
 import Data.Id as Id
 import Json.Decode as Decode
@@ -54,6 +54,19 @@ type alias AttachedBody =
 
 type alias DataBody =
     { size : Int, data : String }
+
+
+type alias Key =
+    { messageId : Id.MessageId
+    , threadId : Id.ThreadId
+    }
+
+
+type alias Page =
+    { messages : List Key
+    , nextPageToken : Maybe String
+    , resultSizeEstimate : Int
+    }
 
 
 
@@ -134,3 +147,18 @@ decoder =
         |> DecodeP.required "labelIds" (Decode.list Id.labelIdDecoder)
         |> DecodeP.required "snippet" Decode.string
         |> DecodeP.required "payload" payloadDecoder
+
+
+keyDecoder : Decode.Decoder Key
+keyDecoder =
+    DecodeP.decode Key
+        |> DecodeP.required "id" Id.messageIdDecoder
+        |> DecodeP.required "threadId" Id.threadIdDecoder
+
+
+pageDecoder : Decode.Decoder Page
+pageDecoder =
+    DecodeP.decode Page
+        |> DecodeP.required "messages" (Decode.list keyDecoder)
+        |> DecodeP.required "nextPageToken" (Decode.nullable Decode.string)
+        |> DecodeP.required "resultSizeEstimate" Decode.int
