@@ -81,7 +81,7 @@ update msg model =
             , case model.messages of
                 RemoteData.NotAsked ->
                     Cmd.batch
-                        [ Request.Thread.one model.token model.thread.threadId
+                        [ Request.Thread.one model.token { id = model.thread.threadId, format = Request.Thread.Minimal }
                             |> Http.send ThreadWithMessagesLoaded
                         ]
 

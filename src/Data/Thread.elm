@@ -1,7 +1,7 @@
 module Data.Thread exposing (Page, Thread, WithMessages, decoder, decoderWithMessages, pageDecoder)
 
 import Data.Id as Id
-import Data.Message as Message
+import Data.MessageId as MessageId
 import Json.Decode as Decode
 import Json.Decode.Pipeline as DecodeP
 
@@ -14,7 +14,7 @@ type alias Thread =
 
 
 type alias WithMessages =
-    { threadId : Id.ThreadId, historyId : Id.HistoryId, messages : List Message.Message }
+    { threadId : Id.ThreadId, historyId : Id.HistoryId, messages : List MessageId.MessageId }
 
 
 type alias Page =
@@ -41,7 +41,7 @@ decoderWithMessages =
     DecodeP.decode WithMessages
         |> DecodeP.required "id" Id.threadIdDecoder
         |> DecodeP.required "historyId" Id.historyIdDecoder
-        |> DecodeP.required "messages" (Decode.list Message.decoder)
+        |> DecodeP.required "messages" (Decode.list MessageId.decoder)
 
 
 pageDecoder : Decode.Decoder Page
