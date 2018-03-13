@@ -9,6 +9,7 @@ import Html.Attributes as HA
 import Html.Events as HE
 import Http
 import RemoteData
+import Request.Message
 import Request.Thread
 
 
@@ -17,7 +18,7 @@ import Request.Thread
 
 type alias Model =
     { token : Token.Token
-    , thread : Thread.SlimThread
+    , thread : Thread.Thread
     , messages : RemoteData.WebData (List Message.Message)
     , expanded : Bool
     }
@@ -68,44 +69,41 @@ messageView message =
 
 type Msg
     = ToggleThread
-    | ThreadMessagesLoaded (Result Http.Error Thread.FullThread)
+    | ThreadWithMessagesLoaded (Result Http.Error Thread.WithMessages)
+    | MessagesLoaded (Result Http.Error (List Message.Message))
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         ToggleThread ->
-            let
-                ( newExpanded, newMessages, cmd ) =
-                    case model.expanded of
-                        True ->
-                            ( False, model.messages, Cmd.none )
+            ( { model | expanded = not model.expanded }
+            , case model.messages of
+                RemoteData.NotAsked ->
+                    Cmd.batch
+                        [ Request.Thread.one model.token { id = model.thread.threadId, format = Request.Thread.Minimal }
+                            |> Http.send ThreadWithMessagesLoaded
+                        ]
 
-                        False ->
-                            ( True
-                            , case model.messages of
-                                RemoteData.NotAsked ->
-                                    RemoteData.Loading
+                _ ->
+                    Cmd.none
+            )
 
-                                _ ->
-                                    model.messages
-                            , case model.messages of
-                                RemoteData.NotAsked ->
-                                    Cmd.batch
-                                        [ Request.Thread.one model.token model.thread.threadId
-                                            |> Http.send ThreadMessagesLoaded
-                                        ]
-
-                                _ ->
-                                    Cmd.none
-                            )
-            in
-            ( { model | expanded = newExpanded, messages = newMessages }, cmd )
-
-        ThreadMessagesLoaded result ->
+        ThreadWithMessagesLoaded result ->
             case result of
                 Ok { messages } ->
-                    ( { model | messages = RemoteData.succeed messages }, Cmd.none )
+                    ( { model | messages = RemoteData.Loading }
+                    , Request.Message.many model.token { ids = List.map .messageId messages, format = Request.Message.Raw }
+                        |> Http.send MessagesLoaded
+                    )
 
                 Err err ->
                     ( { model | messages = result |> Result.map (always []) |> RemoteData.fromResult }, Cmd.none )
+
+        MessagesLoaded results ->
+            case results of
+                Ok messages ->
+                    ( { model | messages = RemoteData.succeed messages }, Cmd.none )
+
+                Err err ->
+                    ( { model | messages = results |> Result.map (always []) |> RemoteData.fromResult }, Cmd.none )

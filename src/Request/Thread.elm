@@ -1,4 +1,4 @@
-module Request.Thread exposing (list, one)
+module Request.Thread exposing (Format(..), list, one)
 
 import Config
 import Data.Id as Id
@@ -8,7 +8,7 @@ import Http
 import HttpBuilder as HttpB
 
 
-list : Token.Token -> Http.Request Thread.PageThread
+list : Token.Token -> Http.Request Thread.Page
 list token =
     let
         url =
@@ -16,17 +16,35 @@ list token =
     in
     HttpB.get url
         |> Token.withAuthorizationHeader (Just token)
-        |> HttpB.withExpect (Http.expectJson <| Thread.pageThreadDecoder)
+        |> HttpB.withExpect (Http.expectJson <| Thread.pageDecoder)
         |> HttpB.toRequest
 
 
-one : Token.Token -> Id.ThreadId -> Http.Request Thread.FullThread
-one token id =
+type Format
+    = Minimal
+    | Metadata
+    | Full
+
+
+one : Token.Token -> { id : Id.ThreadId, format : Format } -> Http.Request Thread.WithMessages
+one token { id, format } =
     let
+        formatAsString format =
+            case format of
+                Minimal ->
+                    "minimal"
+
+                Metadata ->
+                    "metadata"
+
+                Full ->
+                    "full"
+
         url =
             String.join "/" [ Config.threadsUrl, Id.threadIdAsString id ]
     in
     HttpB.get url
         |> Token.withAuthorizationHeader (Just token)
-        |> HttpB.withExpect (Http.expectJson <| Thread.fullThreadDecoder)
+        |> HttpB.withQueryParams [ ( "format", formatAsString format ) ]
+        |> HttpB.withExpect (Http.expectJson <| Thread.decoderWithMessages)
         |> HttpB.toRequest

@@ -1,18 +1,28 @@
-module Config exposing (messagesUrl, threadsUrl)
+module Config exposing (batchUrl, messagesUrl, threadsUrl)
 
 
-apiUrl : String
-apiUrl =
-    "https://www.googleapis.com/gmail/v1/users/me"
+rootUrl : String
+rootUrl =
+    "https://www.googleapis.com"
+
+
+servicePath : String
+servicePath =
+    "gmail/v1/users/me"
+
+
+batchUrl : String
+batchUrl =
+    "https://content.googleapis.com/batch/gmail/v1"
 
 
 messagesUrl : String
 messagesUrl =
     String.join "/"
-        [ apiUrl, "messages" ]
+        [ rootUrl, servicePath, "messages" ]
 
 
 threadsUrl : String
 threadsUrl =
     String.join "/"
-        [ apiUrl, "threads" ]
+        [ rootUrl, servicePath, "threads" ]
