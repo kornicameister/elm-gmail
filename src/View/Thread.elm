@@ -60,7 +60,35 @@ view model =
 
 messageView : Message.Message -> H.Html msg
 messageView message =
-    H.li [ HA.class "mdc-list-item" ] [ H.text message.snippet ]
+    H.li [ HA.class "mdc-list-item" ]
+        [ H.p [] [ H.text message.snippet ]
+        , H.div []
+            [ case message.payload of
+                Message.Raw content ->
+                    H.text content
+
+                Message.Parted { parts } ->
+                    case parts of
+                        Message.NoParts ->
+                            C.empty
+
+                        Message.Parts parts ->
+                            List.map
+                                (\{ body } ->
+                                    case body of
+                                        Message.Empty ->
+                                            C.empty
+
+                                        Message.WithData {data} ->
+                                            H.text data
+
+                                        Message.WithAttachment _ ->
+                                            C.empty
+                                )
+                                parts
+                                |> H.div []
+            ]
+        ]
 
 
 
@@ -93,7 +121,7 @@ update msg model =
             case result of
                 Ok { messages } ->
                     ( { model | messages = RemoteData.Loading }
-                    , Request.Message.many model.token { ids = List.map .messageId messages, format = Request.Message.Raw }
+                    , Request.Message.many model.token { ids = List.map .messageId messages, format = Request.Message.Full }
                         |> Http.send MessagesLoaded
                     )
 
