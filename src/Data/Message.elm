@@ -27,7 +27,7 @@ type Payload
 
 type alias PayloadObject =
     { partId : Maybe String
-    , mimeType : String
+    , mimeType : String -- TODO(kornicameister) add MIME_TYPE type
     , filename : Maybe String
     , headers : List ( String, String )
     , body : Body
