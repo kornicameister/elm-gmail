@@ -7,6 +7,8 @@ import Data.Token as Token
 import Html as H
 import Html.Attributes as HA
 import Html.Events as HE
+import HtmlParser
+import HtmlParser.Util
 import Http
 import RemoteData
 import Request.Message
@@ -60,7 +62,40 @@ view model =
 
 messageView : Message.Message -> H.Html msg
 messageView message =
-    H.li [ HA.class "mdc-list-item" ] [ H.text message.snippet ]
+    H.li [ HA.class "mdc-list-item" ]
+        [ H.p [] [ H.text message.snippet ]
+        , H.div []
+            (case message.payload of
+                Message.Raw content ->
+                    [ H.text content ]
+
+                Message.Parted { parts } ->
+                    case parts of
+                        Message.NoParts ->
+                            [ C.empty ]
+
+                        Message.Parts parts ->
+                            List.map
+                                (\{ body, mimeType } ->
+                                    case ( body, mimeType ) of
+                                        ( Message.Empty, _ ) ->
+                                            [ C.empty ]
+
+                                        ( Message.WithData { data }, "text/html" ) ->
+                                            HtmlParser.parse data
+                                                |> HtmlParser.Util.filterElements (\tagName _ _ -> tagName |> String.toLower |> String.contains "DOCTYPE")
+                                                |> HtmlParser.Util.toVirtualDom
+
+                                        ( Message.WithData { data }, _ ) ->
+                                            [ H.text data ]
+
+                                        ( Message.WithAttachment _, _ ) ->
+                                            [ C.empty ]
+                                )
+                                parts
+                                |> List.concat
+            )
+        ]
 
 
 
@@ -68,7 +103,8 @@ messageView message =
 
 
 type Msg
-    = ToggleThread
+    = NoOp
+    | ToggleThread
     | ThreadWithMessagesLoaded (Result Http.Error Thread.WithMessages)
     | MessagesLoaded (Result Http.Error (List Message.Message))
 
@@ -76,6 +112,9 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        NoOp ->
+            ( model, Cmd.none )
+
         ToggleThread ->
             ( { model | expanded = not model.expanded }
             , case model.messages of
@@ -93,7 +132,7 @@ update msg model =
             case result of
                 Ok { messages } ->
                     ( { model | messages = RemoteData.Loading }
-                    , Request.Message.many model.token { ids = List.map .messageId messages, format = Request.Message.Raw }
+                    , Request.Message.many model.token { ids = List.map .messageId messages, format = Request.Message.Full }
                         |> Http.send MessagesLoaded
                     )
 

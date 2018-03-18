@@ -1,4 +1,4 @@
-module Data.Message exposing (Key, Message, Page, Payload(..), decoder, keyDecoder, pageDecoder)
+module Data.Message exposing (Body(..), Key, Message, Page, Parts(..), Payload(..), decoder, keyDecoder, pageDecoder)
 
 import Base64
 import Data.Id as Id
@@ -27,7 +27,7 @@ type Payload
 
 type alias PayloadObject =
     { partId : Maybe String
-    , mimeType : String
+    , mimeType : String -- TODO(kornicameister) add MIME_TYPE type
     , filename : Maybe String
     , headers : List ( String, String )
     , body : Body
@@ -112,7 +112,7 @@ decoder =
                             if size == 0 then
                                 Decode.succeed Empty
                             else
-                                Decode.field "data" Decode.string
+                                Decode.field "data" urlBase64decoder
                                     |> Decode.andThen
                                         (\data -> Decode.succeed { data = data, size = size })
                                     |> Decode.map WithData
@@ -147,7 +147,7 @@ decoder =
                 |> DecodeP.required "body" bodyDecoder
                 |> DecodeP.optional "parts" (Decode.list partDecoder |> Decode.map Parts) NoParts
 
-        rawPayloadDecoder =
+        urlBase64decoder =
             Decode.string
                 |> Decode.andThen
                     (\x ->
@@ -168,7 +168,7 @@ decoder =
         |> DecodeP.custom
             (Decode.oneOf
                 [ Decode.field "payload" payloadWithPartsDecoder |> Decode.map Parted
-                , Decode.field "raw" rawPayloadDecoder |> Decode.map Raw
+                , Decode.field "raw" urlBase64decoder |> Decode.map Raw
                 ]
             )
 
