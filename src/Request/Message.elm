@@ -25,7 +25,6 @@ type Format
     = Minimal
     | Metadata
     | Full
-    | Raw
 
 
 many : Token.Token -> { ids : List Id.MessageId, format : Format } -> Http.Request (List Message.Message)
@@ -41,9 +40,6 @@ many token { ids, format } =
 
                 Full ->
                     "full"
-
-                Raw ->
-                    "raw"
 
         configs =
             List.map

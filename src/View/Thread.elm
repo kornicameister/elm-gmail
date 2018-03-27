@@ -65,35 +65,30 @@ messageView message =
     H.li [ HA.class "mdc-list-item" ]
         [ H.p [] [ H.text message.snippet ]
         , H.div []
-            (case message.payload of
-                Message.Raw content ->
-                    [ H.text content ]
+            (case message.payload.parts of
+                Message.NoParts ->
+                    [ C.empty ]
 
-                Message.Parted { parts } ->
-                    case parts of
-                        Message.NoParts ->
-                            [ C.empty ]
+                Message.Parts parts ->
+                    List.map
+                        (\{ body, mimeType } ->
+                            case ( body, mimeType ) of
+                                ( Message.Empty, _ ) ->
+                                    [ C.empty ]
 
-                        Message.Parts parts ->
-                            List.map
-                                (\{ body, mimeType } ->
-                                    case ( body, mimeType ) of
-                                        ( Message.Empty, _ ) ->
-                                            [ C.empty ]
+                                ( Message.WithData { data }, "text/html" ) ->
+                                    HtmlParser.parse data
+                                        |> HtmlParser.Util.filterElements (\tagName _ _ -> tagName |> String.toLower |> String.contains "DOCTYPE")
+                                        |> HtmlParser.Util.toVirtualDom
 
-                                        ( Message.WithData { data }, "text/html" ) ->
-                                            HtmlParser.parse data
-                                                |> HtmlParser.Util.filterElements (\tagName _ _ -> tagName |> String.toLower |> String.contains "DOCTYPE")
-                                                |> HtmlParser.Util.toVirtualDom
+                                ( Message.WithData { data }, _ ) ->
+                                    [ H.text data ]
 
-                                        ( Message.WithData { data }, _ ) ->
-                                            [ H.text data ]
-
-                                        ( Message.WithAttachment _, _ ) ->
-                                            [ C.empty ]
-                                )
-                                parts
-                                |> List.concat
+                                ( Message.WithAttachment _, _ ) ->
+                                    [ C.empty ]
+                        )
+                        parts
+                        |> List.concat
             )
         ]
 
