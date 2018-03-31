@@ -5,7 +5,7 @@ import Data.Message as Message
 import Data.Thread as Thread
 import Data.Token as Token
 import Html as H
-import Html.Attributes as HA
+import Html.Attributes as A
 import Html.Events as HE
 import HtmlParser
 import HtmlParser.Util
@@ -32,15 +32,17 @@ type alias Model =
 
 view : Model -> H.Html Msg
 view model =
-    H.div []
-        [ H.h3 [ HA.class "mdc-list-group__subheader", HE.onClick ToggleThread ] [ H.text model.thread.snippet ]
-        , H.ul [ HA.class "mdc-list" ]
+    H.div [  ]
+        [ H.section [  ]
+            [ H.h1 [ A.class "title is-6", HE.onClick ToggleThread ] [ H.text model.thread.snippet ]
+            ]
+        , H.ul [ ]
             (case ( model.messages, model.expanded ) of
                 ( RemoteData.NotAsked, _ ) ->
                     [ C.empty ]
 
                 ( RemoteData.Loading, True ) ->
-                    [ C.progressBar model.messages ]
+                    [ H.div [ A.class "container" ] [ H.text "Loading" ] ]
 
                 ( RemoteData.Loading, False ) ->
                     [ C.empty ]
@@ -62,8 +64,8 @@ view model =
 
 messageView : Message.Message -> H.Html msg
 messageView message =
-    H.li [ HA.class "mdc-list-item" ]
-        [ H.p [] [ H.text message.snippet ]
+    H.li []
+        [ H.p [ A.class "subtitle is-7" ] [ H.text message.snippet ]
         , H.div []
             (case message.payload.parts of
                 Message.NoParts ->

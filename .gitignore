@@ -15,3 +15,6 @@ node_modules
 
 # client_id.json - credentials downloaded from Google Console
 client_id.json
+
+# all sort of logs
+*.log

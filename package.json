@@ -4,8 +4,8 @@
   "version": "0.0.1",
   "private": true,
   "dependencies": {
+    "bulma": "^0.6.2",
     "elm": "^0.18.0",
-    "elm-format": "^0.7.0-exp",
-    "material-components-web": "^0.32.0"
+    "elm-format": "^0.7.0-exp"
   }
 }
