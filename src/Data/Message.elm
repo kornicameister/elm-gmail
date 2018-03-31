@@ -133,7 +133,7 @@ decoder =
                 |> DecodeP.required "headers" headersDecoder
                 |> DecodeP.required "body" bodyDecoder
 
-        payloadWithPartsDecoder =
+        payloadDecoder =
             DecodeP.decode Payload
                 |> DecodeP.required "partId" emptyStringAsNothingDecoder
                 |> DecodeP.required "mimeType" Decode.string
@@ -160,7 +160,7 @@ decoder =
         |> DecodeP.required "historyId" Id.historyIdDecoder
         |> DecodeP.required "labelIds" (Decode.list Id.labelIdDecoder)
         |> DecodeP.required "snippet" Decode.string
-        |> DecodeP.required "payload" payloadWithPartsDecoder
+        |> DecodeP.required "payload" payloadDecoder
 
 
 keyDecoder : Decode.Decoder Key
