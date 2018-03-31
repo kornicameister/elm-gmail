@@ -32,17 +32,17 @@ type alias Model =
 
 view : Model -> H.Html Msg
 view model =
-    H.article [ A.class "container" ]
-        [ H.section [ A.class "container" ]
+    H.div [  ]
+        [ H.section [  ]
             [ H.h1 [ A.class "title is-6", HE.onClick ToggleThread ] [ H.text model.thread.snippet ]
             ]
-        , H.ul [ A.class "container" ]
+        , H.ul [ ]
             (case ( model.messages, model.expanded ) of
                 ( RemoteData.NotAsked, _ ) ->
                     [ C.empty ]
 
                 ( RemoteData.Loading, True ) ->
-                    [ C.progressBar model.messages ]
+                    [ H.div [ A.class "container" ] [ H.text "Loading" ] ]
 
                 ( RemoteData.Loading, False ) ->
                     [ C.empty ]
@@ -64,7 +64,7 @@ view model =
 
 messageView : Message.Message -> H.Html msg
 messageView message =
-    H.li [ A.class "container" ]
+    H.li []
         [ H.p [ A.class "subtitle is-7" ] [ H.text message.snippet ]
         , H.div []
             (case message.payload.parts of

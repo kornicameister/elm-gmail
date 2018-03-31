@@ -149,74 +149,80 @@ update msg model =
 
 view : Model -> H.Html Msg
 view model =
-    case model.state of
-        Authed state ->
-            mainScreen state
+    H.main_ [ A.class "container" ]
+        [ case model.state of
+            Authed state ->
+                mainScreen state
 
-        NotAuthed ->
-            loginScreen
+            NotAuthed ->
+                loginScreen
+        ]
 
 
 loginScreen : H.Html Msg
 loginScreen =
-    H.main_ []
-        [ H.div [ A.class "container" ]
-            [ H.div [ A.class "buttons is-centered" ]
-                [ H.button [ A.class "button is-primary", HE.onClick GoogleApiSignIn ] [ H.text "Sign In" ]
-                ]
+    H.div [ A.class "container" ]
+        [ H.div [ A.class "buttons is-centered" ]
+            [ H.button [ A.class "button is-primary", HE.onClick GoogleApiSignIn ] [ H.text "Sign In" ]
             ]
         ]
 
 
 mainScreen : AuthedPageState -> H.Html Msg
 mainScreen state =
-    H.main_ []
+    H.div [ A.class "content" ]
         [ mainScreenHeader state.user
-        , C.progressBar state.threads
-        , case state.threads of
-            RemoteData.Success threadModels ->
-                threadModels
-                    |> List.map
-                        (\threadModel ->
-                            View.Thread.view threadModel
-                                |> H.map
-                                    (ThreadViewMsg threadModel.thread.threadId)
-                        )
-                    |> H.section [ A.class "section" ]
+        , H.section [ A.class "section" ]
+            [ case state.threads of
+                RemoteData.Loading ->
+                    H.div [ A.class "container" ] [ H.text "Loading..." ]
 
-            _ ->
-                C.empty
+                RemoteData.Success threadModels ->
+                    threadModels
+                        |> List.map
+                            (\threadModel ->
+                                View.Thread.view threadModel
+                                    |> H.map
+                                        (ThreadViewMsg threadModel.thread.threadId)
+                            )
+                        |> H.section [ A.class "section" ]
+
+                _ ->
+                    C.empty
+            ]
         ]
 
 
 mainScreenHeader : User.User -> H.Html Msg
 mainScreenHeader user =
     H.nav
-        [ A.class "navbar if-fixed-top is-dark"
+        [ A.class "navbar is-fixed-top is-dark"
         , A.attribute "role" "navigation"
         , A.attribute "aria-label" "main-navigation"
         ]
-        [ H.div [ A.class "navbar-brand" ]
-            [ H.div [ A.class "navbar-item" ]
-                [ H.figure [ A.class "" ]
-                    [ H.img [ A.src user.imageUrl, A.class "km-avatar", A.alt "user avatar" ] []
+        [ H.div [ A.class "container" ]
+            [ H.div [ A.class "navbar-brand" ]
+                [ H.a [ A.href "#", A.class "navbar-item material-icons" ] [ H.text "menu" ]
+                , H.div [ A.class "navbar-burger" ]
+                    [ H.figure [ A.class "image is-24x24" ]
+                        [ H.img [ A.src user.imageUrl, A.class "km-avatar", A.alt "user avatar" ] []
+                        ]
                     ]
                 ]
-            , H.div [ A.class "navbar-burger" ]
-                [ H.span [] []
-                , H.span [] []
-                , H.span [] []
-                ]
-            ]
-        , H.div [ A.class "navbar-menu" ]
-            [ H.div [ A.class "navbar-start" ]
-                [ H.a [ A.href "#", A.class "navbar-item material-icons" ] [ H.text "menu" ]
-                , H.a [ A.href "#", A.class "navbar-item material-icons" ] [ H.text "inbox" ]
-                , H.a [ A.href "#", A.class "navbar-item material-icons" ] [ H.text "spam" ]
-                , H.a [ A.href "#", A.class "navbar-item material-icons" ] [ H.text "add" ]
-                ]
-            , H.div [ A.class "navbar-end" ]
-                [ H.a [ A.class "mdc-toolbar__title", A.title "Click to sign out", HE.onClick GoogleApiSignOut ] [ H.text user.name ]
+            , H.div [ A.class "navbar-menu" ]
+                [ H.div [ A.class "navbar-start" ]
+                    [ H.a [ A.href "#", A.class "navbar-item material-icons" ] [ H.text "inbox" ]
+                    , H.a [ A.href "#", A.class "navbar-item material-icons" ] [ H.text "spam" ]
+                    , H.a [ A.href "#", A.class "navbar-item material-icons" ] [ H.text "add" ]
+                    ]
+                , H.div [ A.class "navbar-end" ]
+                    [ H.div [ A.class "navbar-item" ]
+                        [ H.figure [ A.class "image is-24x24" ]
+                            [ H.img [ A.src user.imageUrl, A.class "km-avatar", A.alt "user avatar" ] []
+                            ]
+                        ]
+                    , H.a [ A.class "navbar-item", A.title "Click to sign out", HE.onClick GoogleApiSignOut ] [ H.text user.name ]
+                    ]
                 ]
             ]
         ]
