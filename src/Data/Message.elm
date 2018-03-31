@@ -1,4 +1,4 @@
-module Data.Message exposing (Body(..), Key, Message, Page, Parts(..), Payload(..), decoder, keyDecoder, pageDecoder)
+module Data.Message exposing (Body(..), Key, Message, Page, Parts(..), decoder, keyDecoder, pageDecoder)
 
 import Base64
 import Data.Id as Id
@@ -20,12 +20,7 @@ type alias Message =
     }
 
 
-type Payload
-    = Raw String
-    | Parted PayloadObject
-
-
-type alias PayloadObject =
+type alias Payload =
     { partId : Maybe String
     , mimeType : String -- TODO(kornicameister) add MIME_TYPE type
     , filename : Maybe String
@@ -138,8 +133,8 @@ decoder =
                 |> DecodeP.required "headers" headersDecoder
                 |> DecodeP.required "body" bodyDecoder
 
-        payloadWithPartsDecoder =
-            DecodeP.decode PayloadObject
+        payloadDecoder =
+            DecodeP.decode Payload
                 |> DecodeP.required "partId" emptyStringAsNothingDecoder
                 |> DecodeP.required "mimeType" Decode.string
                 |> DecodeP.required "filename" emptyStringAsNothingDecoder
@@ -165,12 +160,7 @@ decoder =
         |> DecodeP.required "historyId" Id.historyIdDecoder
         |> DecodeP.required "labelIds" (Decode.list Id.labelIdDecoder)
         |> DecodeP.required "snippet" Decode.string
-        |> DecodeP.custom
-            (Decode.oneOf
-                [ Decode.field "payload" payloadWithPartsDecoder |> Decode.map Parted
-                , Decode.field "raw" urlBase64decoder |> Decode.map Raw
-                ]
-            )
+        |> DecodeP.required "payload" payloadDecoder
 
 
 keyDecoder : Decode.Decoder Key
