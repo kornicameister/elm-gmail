@@ -5,7 +5,7 @@ import Data.Id as Id
 import Data.Thread as Thread
 import Data.User as User
 import Html as H
-import Html.Attributes as HA
+import Html.Attributes as A
 import Html.Events as HE
 import Http
 import Json.Decode as Decode
@@ -160,11 +160,9 @@ view model =
 loginScreen : H.Html Msg
 loginScreen =
     H.main_ []
-        [ H.div [ HA.class "mdc-layout-grid" ]
-            [ H.div [ HA.class "mdc-layout-grid__inner" ]
-                [ H.div [ HA.class "mdc-layout-grid__cell" ]
-                    [ H.button [ HA.class "mdc-button", HE.onClick GoogleApiSignIn ] [ H.text "Sign In" ]
-                    ]
+        [ H.div [ A.class "container" ]
+            [ H.div [ A.class "buttons is-centered" ]
+                [ H.button [ A.class "button is-primary", HE.onClick GoogleApiSignIn ] [ H.text "Sign In" ]
                 ]
             ]
         ]
@@ -172,52 +170,53 @@ loginScreen =
 
 mainScreen : AuthedPageState -> H.Html Msg
 mainScreen state =
-    let
-        threadView thread =
-            H.div []
-                [ H.h3 [ HA.class "mdc-list-group__subheader" ] [ H.text thread.snippet ]
-                , H.ul [ HA.class "mdc-list" ] [ H.ul [ HA.class "mdc-list" ] [] ]
-                ]
-    in
-    H.div []
+    H.main_ []
         [ mainScreenHeader state.user
-        , H.main_ []
-            [ C.progressBar state.threads
-            , case state.threads of
-                RemoteData.Success threadModels ->
-                    threadModels
-                        |> List.map
-                            (\threadModel ->
-                                View.Thread.view threadModel
-                                    |> H.map
-                                        (ThreadViewMsg threadModel.thread.threadId)
-                            )
-                        |> H.div [ HA.class "mdc-list-group" ]
+        , C.progressBar state.threads
+        , case state.threads of
+            RemoteData.Success threadModels ->
+                threadModels
+                    |> List.map
+                        (\threadModel ->
+                            View.Thread.view threadModel
+                                |> H.map
+                                    (ThreadViewMsg threadModel.thread.threadId)
+                        )
+                    |> H.section [ A.class "section" ]
 
-                _ ->
-                    C.empty
-            ]
+            _ ->
+                C.empty
         ]
 
 
 mainScreenHeader : User.User -> H.Html Msg
 mainScreenHeader user =
-    H.header [ HA.class "mdc-toolbar" ]
-        [ H.div [ HA.class "mdc-toolbar__row km-toolbar-image" ]
-            [ H.section [ HA.class "mdc-toolbar__section mdc-toolbar__section--align-start" ]
-                [ H.a [ HA.href "#", HA.class "mdc-toolbar__menu-icon" ] [ C.materialIcon "menu" ]
-                , H.span [ HA.class "mdc-toolbar__title" ] [ H.text "ElmMail" ]
+    H.nav
+        [ A.class "navbar if-fixed-top is-dark"
+        , A.attribute "role" "navigation"
+        , A.attribute "aria-label" "main-navigation"
+        ]
+        [ H.div [ A.class "navbar-brand" ]
+            [ H.div [ A.class "navbar-item" ]
+                [ H.figure [ A.class "" ]
+                    [ H.img [ A.src user.imageUrl, A.class "km-avatar", A.alt "user avatar" ] []
+                    ]
                 ]
-            , H.section [ HA.class "mdc-toolbar__section mdc-toolbar__section--align-end" ]
-                [ H.a [ HA.class "mdc-toolbar__title", HA.title "Click to sign out", HE.onClick GoogleApiSignOut ] [ H.text user.name ]
-                , H.img [ HA.src user.imageUrl, HA.class "km-avatar", HA.alt "user avatar" ] []
+            , H.div [ A.class "navbar-burger" ]
+                [ H.span [] []
+                , H.span [] []
+                , H.span [] []
                 ]
             ]
-        , H.nav [ HA.class "mdc-toolbar__row" ]
-            [ H.section [ HA.class "mdc-toolbar__section mdc-toolbar__section--align-end" ]
-                [ H.a [ HA.href "#", HA.class "mdc-toolbar__icon material-icons" ] [ H.text "inbox" ]
-                , H.a [ HA.href "#", HA.class "mdc-toolbar__icon material-icons" ] [ H.text "spam" ]
-                , H.a [ HA.href "#", HA.class "mdc-toolbar__icon material-icons" ] [ H.text "add" ]
+        , H.div [ A.class "navbar-menu" ]
+            [ H.div [ A.class "navbar-start" ]
+                [ H.a [ A.href "#", A.class "navbar-item material-icons" ] [ H.text "menu" ]
+                , H.a [ A.href "#", A.class "navbar-item material-icons" ] [ H.text "inbox" ]
+                , H.a [ A.href "#", A.class "navbar-item material-icons" ] [ H.text "spam" ]
+                , H.a [ A.href "#", A.class "navbar-item material-icons" ] [ H.text "add" ]
+                ]
+            , H.div [ A.class "navbar-end" ]
+                [ H.a [ A.class "mdc-toolbar__title", A.title "Click to sign out", HE.onClick GoogleApiSignOut ] [ H.text user.name ]
                 ]
             ]
         ]

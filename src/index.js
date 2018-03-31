@@ -1,4 +1,4 @@
-import "material-components-web/dist/material-components-web.min.css";
+import "bulma/css/bulma.css";
 
 import { Main } from "./Main.elm";
 

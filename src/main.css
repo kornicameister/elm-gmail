@@ -1,10 +1,10 @@
 .km-avatar {
     vertical-align: middle;
-    width: 50px;
-    height: 50px;
+    width: 60px;
+    height: 60px;
     border-radius: 50%;
 }
 
-.mdc-toolbar .km-avatar {
+.navbar-brand .km-avatar {
     padding: 1rem;
 }
