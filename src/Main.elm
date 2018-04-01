@@ -246,19 +246,30 @@ labelsColumn ( isVisible, labels ) =
                             (\label -> label.visibility.inLabelList == Label.Visible)
                         |> List.sortBy .name
                         |> List.partition
-                            (\label -> label.kind == Label.SystemDefined)
+                            (\label -> label.definedBy == Label.SystemDefined)
 
-                systemLabelLis =
+                ( inboxLabels, filterLabels ) =
                     systemLabels
-                        |> List.filter (\label -> not <| String.startsWith "CATEGORY_" label.name)
+                        |> List.filter (\label -> label.kind /= Label.Category)
+                        |> List.partition (\label -> label.kind == Label.Inbox)
+
+                inboxLabelLis =
+                    inboxLabels
+                        |> List.map (\label -> H.p [] [ H.a [] [ H.text label.name ] ])
+
+                filterLabelLis =
+                    filterLabels
                         |> List.map (\label -> H.p [] [ H.a [] [ H.text label.name ] ])
 
                 userLabelLis =
                     userLabels
                         |> List.map (\label -> H.p [] [ H.a [] [ H.text label.name ] ])
 
+                paddingEl =
+                    [ H.p [ A.style [ ( "padding", "2px" ) ] ] [] ]
+
                 fullLiList =
-                    systemLabelLis ++ [ H.p [ A.style [ ( "padding", "2px" ) ] ] [] ] ++ userLabelLis
+                    inboxLabelLis ++ paddingEl ++ filterLabelLis ++ paddingEl ++ userLabelLis
             in
             H.div [ A.class "column is-3" ] [ H.div [ A.class "container" ] [ H.section [ A.class "section" ] fullLiList ] ]
 

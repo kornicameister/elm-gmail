@@ -1,8 +1,9 @@
 module Data.Label
     exposing
-        ( Kind(..)
-        , VisibilityInLabelsList(..)
+        ( DefinedBy(..)
+        , Kind(..)
         , Label
+        , VisibilityInLabelsList(..)
         , decoder
         )
 
@@ -14,14 +15,21 @@ import Json.Decode.Pipeline as DecodeP
 type alias Label =
     { id : Id.LabelId
     , name : String
-    , kind : Kind
+    , definedBy : DefinedBy
     , visibility : Visibility
+    , kind : Kind
     }
 
 
-type Kind
+type DefinedBy
     = SystemDefined
     | UserDefined
+
+
+type Kind
+    = Inbox
+    | Filter
+    | Category
 
 
 type alias Visibility =
@@ -100,4 +108,26 @@ decoder =
                 )
                 (Decode.maybe (Decode.field "labelsListVisibility" labelsListVisibility))
                 (Decode.maybe (Decode.field "messageListVisibility" messageListVisibility))
+            )
+        |> DecodeP.custom
+            (Decode.field "id" Decode.string
+                |> Decode.andThen
+                    (\id ->
+                        case
+                            [ List.member id [ "INBOX", "SENT", "UNREAD", "DRAFT", "SPAM", "THRASH" ]
+                            , String.startsWith "CATEGORY_" id
+                            ]
+                        of
+                            [ True, False ] ->
+                                Decode.succeed Inbox
+
+                            [ False, True ] ->
+                                Decode.succeed Category
+
+                            [ False, False ] ->
+                                Decode.succeed Filter
+
+                            _ ->
+                                Decode.fail <| "Failed to deduce label kind from id: " ++ id
+                    )
             )
