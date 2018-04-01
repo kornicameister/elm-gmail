@@ -1,9 +1,17 @@
-module View.Thread exposing (Model, Msg, update, view)
+module View.Thread
+    exposing
+        ( Model
+        , Msg
+        , init
+        , update
+        , view
+        )
 
 import Component as C
 import Data.Message as Message
 import Data.Thread as Thread
 import Data.Token as Token
+import Data.User as User
 import Html as H
 import Html.Attributes as A
 import Html.Events as E
@@ -26,17 +34,26 @@ type alias Model =
     }
 
 
+init : User.User -> Thread.Thread -> Model
+init user thread =
+    { token = user.accessToken
+    , thread = thread
+    , messages = RemoteData.Loading
+    , expanded = False
+    }
+
+
 
 ---- VIEW ----
 
 
 view : Model -> H.Html Msg
 view model =
-    H.div [  ]
-        [ H.section [  ]
+    H.div []
+        [ H.section []
             [ H.h1 [ A.class "title is-6", E.onClick ToggleThread ] [ H.text model.thread.snippet ]
             ]
-        , H.ul [ ]
+        , H.ul []
             (case ( model.messages, model.expanded ) of
                 ( RemoteData.NotAsked, _ ) ->
                     [ C.empty ]
