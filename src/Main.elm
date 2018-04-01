@@ -2,16 +2,18 @@ module Main exposing (..)
 
 import Component as C
 import Data.Id as Id
+import Data.Label as Label
 import Data.Thread as Thread
 import Data.User as User
 import Html as H
 import Html.Attributes as A
-import Html.Events as HE
+import Html.Events as E
 import Http
 import Json.Decode as Decode
 import Json.Encode as Encode
 import Ports
 import RemoteData
+import Request.Label
 import Request.Thread
 import View.Thread
 
@@ -32,6 +34,7 @@ type PageState
 type alias AuthedPageState =
     { user : User.User
     , threads : RemoteData.WebData (List View.Thread.Model)
+    , labels : ( Bool, RemoteData.WebData (List Label.Label) )
     }
 
 
@@ -50,7 +53,9 @@ type Msg
     | GoogleApiSignIn
     | GoogleApiSignOut
     | ThreadsLoaded (Result Http.Error Thread.Page)
+    | LabelsLoaded (Result Http.Error (List Label.Label))
     | ThreadViewMsg Id.ThreadId View.Thread.Msg
+    | ToogleLabelsColumn
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -70,10 +75,13 @@ update msg model =
                             ( Authed
                                 { user = user
                                 , threads = RemoteData.Loading
+                                , labels = ( True, RemoteData.Loading )
                                 }
                             , Cmd.batch
                                 [ Request.Thread.list user.accessToken
                                     |> Http.send ThreadsLoaded
+                                , Request.Label.list user.accessToken
+                                    |> Http.send LabelsLoaded
                                 ]
                             )
             in
@@ -111,6 +119,26 @@ update msg model =
             ( { model | state = Authed { state | threads = newThreads } }, Cmd.none )
 
         ( ThreadsLoaded result, NotAuthed ) ->
+            ( model, Cmd.none )
+
+        ( LabelsLoaded result, Authed state ) ->
+            let
+                ( labelsVisible, _ ) =
+                    state.labels
+            in
+            ( { model | state = Authed { state | labels = ( labelsVisible, RemoteData.fromResult result ) } }, Cmd.none )
+
+        ( LabelsLoaded result, NotAuthed ) ->
+            ( model, Cmd.none )
+
+        ( ToogleLabelsColumn, Authed state ) ->
+            let
+                ( labelsVisible, labelsData ) =
+                    state.labels
+            in
+            ( { model | state = Authed { state | labels = ( not labelsVisible, labelsData ) } }, Cmd.none )
+
+        ( ToogleLabelsColumn, _ ) ->
             ( model, Cmd.none )
 
         ( ThreadViewMsg threadId viewMsg, Authed state ) ->
@@ -163,7 +191,7 @@ loginScreen : H.Html Msg
 loginScreen =
     H.div [ A.class "container" ]
         [ H.div [ A.class "buttons is-centered" ]
-            [ H.button [ A.class "button is-primary", HE.onClick GoogleApiSignIn ] [ H.text "Sign In" ]
+            [ H.button [ A.class "button is-primary", E.onClick GoogleApiSignIn ] [ H.text "Sign In" ]
             ]
         ]
 
@@ -173,24 +201,80 @@ mainScreen state =
     H.div [ A.class "content" ]
         [ mainScreenHeader state.user
         , H.section [ A.class "section" ]
-            [ case state.threads of
-                RemoteData.Loading ->
-                    H.div [ A.class "container" ] [ H.text "Loading..." ]
+            [ H.div [ A.class "columns" ]
+                [ labelsColumn state.labels
+                , H.div [ A.class "column" ]
+                    [ case state.threads of
+                        RemoteData.Loading ->
+                            H.div [ A.class "container" ] [ H.text "Loading..." ]
 
-                RemoteData.Success threadModels ->
-                    threadModels
-                        |> List.map
-                            (\threadModel ->
-                                View.Thread.view threadModel
-                                    |> H.map
-                                        (ThreadViewMsg threadModel.thread.threadId)
-                            )
-                        |> H.section [ A.class "section" ]
+                        RemoteData.Success threadModels ->
+                            threadModels
+                                |> List.map
+                                    (\threadModel ->
+                                        View.Thread.view threadModel
+                                            |> H.map
+                                                (ThreadViewMsg threadModel.thread.threadId)
+                                    )
+                                |> H.section [ A.class "section" ]
 
-                _ ->
-                    C.empty
+                        _ ->
+                            C.empty
+                    ]
+                ]
             ]
         ]
+
+
+labelsColumn : ( Bool, RemoteData.WebData (List Label.Label) ) -> H.Html Msg
+labelsColumn ( isVisible, labels ) =
+    case ( isVisible, labels ) of
+        ( False, RemoteData.Loading ) ->
+            C.empty
+
+        ( True, RemoteData.Loading ) ->
+            H.div [ A.class "column is-3" ] [ H.div [ A.class "container" ] [ H.text "Loading ..." ] ]
+
+        ( False, RemoteData.Success _ ) ->
+            C.empty
+
+        ( True, RemoteData.Success labels ) ->
+            let
+                ( systemLabels, userLabels ) =
+                    labels
+                        |> List.filter
+                            (\label -> label.visibility.inLabelList == Label.Visible)
+                        |> List.sortBy .name
+                        |> List.partition
+                            (\label -> label.definedBy == Label.SystemDefined)
+
+                ( inboxLabels, filterLabels ) =
+                    systemLabels
+                        |> List.filter (\label -> label.kind /= Label.Category)
+                        |> List.partition (\label -> label.kind == Label.Inbox)
+
+                inboxLabelLis =
+                    inboxLabels
+                        |> List.map (\label -> H.p [] [ H.a [] [ H.text label.name ] ])
+
+                filterLabelLis =
+                    filterLabels
+                        |> List.map (\label -> H.p [] [ H.a [] [ H.text label.name ] ])
+
+                userLabelLis =
+                    userLabels
+                        |> List.map (\label -> H.p [] [ H.a [] [ H.text label.name ] ])
+
+                paddingEl =
+                    [ H.p [ A.style [ ( "padding", "2px" ) ] ] [] ]
+
+                fullLiList =
+                    inboxLabelLis ++ paddingEl ++ filterLabelLis ++ paddingEl ++ userLabelLis
+            in
+            H.div [ A.class "column is-3" ] [ H.div [ A.class "container" ] [ H.section [ A.class "section" ] fullLiList ] ]
+
+        ( _, _ ) ->
+            C.empty
 
 
 mainScreenHeader : User.User -> H.Html Msg
@@ -202,7 +286,7 @@ mainScreenHeader user =
         ]
         [ H.div [ A.class "container" ]
             [ H.div [ A.class "navbar-brand" ]
-                [ H.a [ A.href "#", A.class "navbar-item material-icons" ] [ H.text "menu" ]
+                [ H.a [ A.href "#", A.class "navbar-item material-icons", E.onClick ToogleLabelsColumn ] [ H.text "menu" ]
                 , H.div [ A.class "navbar-burger" ]
                     [ H.figure [ A.class "image is-24x24" ]
                         [ H.img [ A.src user.imageUrl, A.class "km-avatar", A.alt "user avatar" ] []
@@ -221,7 +305,7 @@ mainScreenHeader user =
                             [ H.img [ A.src user.imageUrl, A.class "km-avatar", A.alt "user avatar" ] []
                             ]
                         ]
-                    , H.a [ A.class "navbar-item", A.title "Click to sign out", HE.onClick GoogleApiSignOut ] [ H.text user.name ]
+                    , H.a [ A.class "navbar-item", A.title "Click to sign out", E.onClick GoogleApiSignOut ] [ H.text user.name ]
                     ]
                 ]
             ]
