@@ -117,8 +117,7 @@ messageView message =
 
 
 type Msg
-    = NoOp
-    | ToggleThread
+    = ToggleThread
     | ThreadWithMessagesLoaded (Result Http.Error Thread.WithMessages)
     | MessagesLoaded (Result Http.Error (List Message.Message))
 
@@ -126,9 +125,6 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        NoOp ->
-            ( model, Cmd.none )
-
         ToggleThread ->
             ( { model | expanded = not model.expanded }
             , case model.messages of

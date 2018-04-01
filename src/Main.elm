@@ -5,6 +5,7 @@ import Data.Id as Id
 import Data.Label as Label
 import Data.Thread as Thread
 import Data.User as User
+import EveryDict
 import Html as H
 import Html.Attributes as A
 import Html.Events as E
@@ -37,8 +38,8 @@ type alias InitializingPageState =
 
 type alias ReadyPageState =
     { user : User.User
-    , threadList : List View.Thread.Model
-    , labelSidebar : View.LabelsSidebar.Model
+    , threads : EveryDict.EveryDict Id.ThreadId View.Thread.Model
+    , labelSidebar : ( Bool, View.LabelsSidebar.Model )
     }
 
 
@@ -59,6 +60,7 @@ type Msg
     | LabelsLoaded (Result Http.Error (List Label.Label))
     | ThreadViewMsg Id.ThreadId View.Thread.Msg
     | LabelSidebarMsg View.LabelsSidebar.Msg
+    | ToggleLabelsColumn
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -92,6 +94,9 @@ update msg model =
                     in
                     ( nextModel, nextCommand )
 
+                _ ->
+                    ( model, Cmd.none )
+
         Initializing state ->
             case msg of
                 ThreadsLoaded result ->
@@ -100,12 +105,51 @@ update msg model =
                 LabelsLoaded result ->
                     ( maybeGoToReady { state | labels = RemoteData.fromResult result }, Cmd.none )
 
-        Ready state ->
-            case msg of
-                ThreadViewMsg threadId threadMsg ->
+                _ ->
                     ( model, Cmd.none )
 
-                LabelSidebarMsg sideberMsg ->
+        Ready state ->
+            case msg of
+                GoogleApiSignOut ->
+                    ( model, Ports.gApiSignOut () )
+
+                ToggleLabelsColumn ->
+                    let
+                        ( isVisible, sidebarModel ) =
+                            state.labelSidebar
+                    in
+                    ( Ready { state | labelSidebar = ( not isVisible, sidebarModel ) }, Cmd.none )
+
+                ThreadViewMsg threadId threadMsg ->
+                    let
+                        maybeThreadModel =
+                            EveryDict.get threadId state.threads
+
+                        ( newModel, newCmd ) =
+                            case maybeThreadModel of
+                                Nothing ->
+                                    ( state, Cmd.none )
+
+                                Just threadModel ->
+                                    let
+                                        ( newThreadModel, newThreadCmd ) =
+                                            View.Thread.update threadMsg threadModel
+
+                                        newThreadList =
+                                            EveryDict.insert threadId newThreadModel state.threads
+                                    in
+                                    ( { state | threads = newThreadList }, newThreadCmd |> Cmd.map (ThreadViewMsg threadId) )
+                    in
+                    ( Ready newModel, newCmd )
+
+                LabelSidebarMsg sidebarMsg ->
+                    let
+                        ( newSidebarModel, newSidebarCmd ) =
+                            View.LabelsSidebar.update sidebarMsg (state.labelSidebar |> Tuple.second)
+                    in
+                    ( Ready { state | labelSidebar = ( Tuple.first state.labelSidebar, newSidebarModel ) }, newSidebarCmd |> Cmd.map LabelSidebarMsg )
+
+                _ ->
                     ( model, Cmd.none )
 
 
@@ -120,8 +164,8 @@ maybeGoToReady state =
                 RemoteData.Success ( threadPage, labels ) ->
                     Ready
                         { user = state.user
-                        , threadList = threadPage.threads |> List.map (View.Thread.init state.user)
-                        , labelSidebar = View.LabelsSidebar.init labels
+                        , threads = threadPage.threads |> List.map (\thread -> ( thread.threadId, View.Thread.init state.user thread )) |> EveryDict.fromList
+                        , labelSidebar = ( True, View.LabelsSidebar.init labels )
                         }
 
                 _ ->
@@ -164,26 +208,12 @@ mainScreen state =
         [ mainScreenHeader state.user
         , H.section [ A.class "section" ]
             [ H.div [ A.class "columns" ]
-                [ View.LabelsSidebar.view state.labels
+                [ View.LabelsSidebar.view state.labelSidebar
                     |> H.map LabelSidebarMsg
-                , H.div [ A.class "column" ]
-                    [ case state.threads of
-                        RemoteData.Loading ->
-                            H.div [ A.class "container" ] [ H.text "Loading..." ]
-
-                        RemoteData.Success threadModels ->
-                            threadModels
-                                |> List.map
-                                    (\threadModel ->
-                                        View.Thread.view threadModel
-                                            |> H.map
-                                                (ThreadViewMsg threadModel.thread.threadId)
-                                    )
-                                |> H.section [ A.class "section" ]
-
-                        _ ->
-                            C.empty
-                    ]
+                , state.threads
+                    |> EveryDict.toList
+                    |> List.map (\( threadId, threadModel ) -> View.Thread.view threadModel |> H.map (ThreadViewMsg threadId))
+                    |> H.div [ A.class "column" ]
                 ]
             ]
         ]
@@ -198,7 +228,7 @@ mainScreenHeader user =
         ]
         [ H.div [ A.class "container" ]
             [ H.div [ A.class "navbar-brand" ]
-                [ H.a [ A.href "#", A.class "navbar-item material-icons", E.onClick ToogleLabelsColumn ] [ H.text "menu" ]
+                [ H.a [ A.href "#", A.class "navbar-item material-icons", E.onClick ToggleLabelsColumn ] [ H.text "menu" ]
                 , H.div [ A.class "navbar-burger" ]
                     [ H.figure [ A.class "image is-24x24" ]
                         [ H.img [ A.src user.imageUrl, A.class "km-avatar", A.alt "user avatar" ] []
