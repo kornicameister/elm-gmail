@@ -6,7 +6,7 @@ import Data.Thread as Thread
 import Data.Token as Token
 import Html as H
 import Html.Attributes as A
-import Html.Events as HE
+import Html.Events as E
 import HtmlParser
 import HtmlParser.Util
 import Http
@@ -34,7 +34,7 @@ view : Model -> H.Html Msg
 view model =
     H.div [  ]
         [ H.section [  ]
-            [ H.h1 [ A.class "title is-6", HE.onClick ToggleThread ] [ H.text model.thread.snippet ]
+            [ H.h1 [ A.class "title is-6", E.onClick ToggleThread ] [ H.text model.thread.snippet ]
             ]
         , H.ul [ ]
             (case ( model.messages, model.expanded ) of

@@ -1,4 +1,10 @@
-module Config exposing (batchUrl, messagesUrl, threadsUrl)
+module Config
+    exposing
+        ( batchUrl
+        , messagesUrl
+        , threadsUrl
+        , labelsUrl
+        )
 
 
 rootUrl : String
@@ -26,3 +32,9 @@ threadsUrl : String
 threadsUrl =
     String.join "/"
         [ rootUrl, servicePath, "threads" ]
+
+
+labelsUrl : String
+labelsUrl =
+    String.join "/"
+        [ rootUrl, servicePath, "labels" ]
