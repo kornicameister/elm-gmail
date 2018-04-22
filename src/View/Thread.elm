@@ -38,7 +38,7 @@ init : User.User -> Thread.Thread -> Model
 init user thread =
     { token = user.accessToken
     , thread = thread
-    , messages = RemoteData.Loading
+    , messages = RemoteData.NotAsked
     , expanded = False
     }
 

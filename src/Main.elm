@@ -207,13 +207,17 @@ mainScreen state =
     H.div [ A.class "content" ]
         [ mainScreenHeader state.user
         , H.section [ A.class "section" ]
-            [ H.div [ A.class "columns" ]
+            [ H.div [ A.class "columns is-centered" ]
                 [ View.LabelsSidebar.view state.labelSidebar
                     |> H.map LabelSidebarMsg
-                , state.threads
-                    |> EveryDict.toList
-                    |> List.map (\( threadId, threadModel ) -> View.Thread.view threadModel |> H.map (ThreadViewMsg threadId))
-                    |> H.div [ A.class "column" ]
+                , H.div [ A.class "column" ]
+                    [ H.div [ A.class "section" ]
+                        [ state.threads
+                            |> EveryDict.toList
+                            |> List.map (\( threadId, threadModel ) -> View.Thread.view threadModel |> H.map (ThreadViewMsg threadId))
+                            |> H.div [ A.class "container" ]
+                        ]
+                    ]
                 ]
             ]
         ]

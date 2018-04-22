@@ -93,4 +93,8 @@ labelsColumn model =
         fullLiList =
             inboxLabelLis ++ paddingEl ++ filterLabelLis ++ paddingEl ++ userLabelLis
     in
-    H.div [ A.class "column is-3" ] [ H.div [ A.class "container" ] [ H.section [ A.class "section" ] fullLiList ] ]
+    H.div [ A.class "column is-3" ]
+        [ H.div [ A.class "container" ]
+            [ H.section [ A.class "section" ] fullLiList
+            ]
+        ]
