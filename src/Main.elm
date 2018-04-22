@@ -5,6 +5,7 @@ import Data.Id as Id
 import Data.Label as Label
 import Data.Thread as Thread
 import Data.User as User
+import EveryDict
 import Html as H
 import Html.Attributes as A
 import Html.Events as E
@@ -15,32 +16,36 @@ import Ports
 import RemoteData
 import Request.Label
 import Request.Thread
+import View.LabelsSidebar
 import View.Thread
 
 
 ---- MODEL ----
 
 
-type alias Model =
-    { state : PageState
+type Model
+    = NotAuthed
+    | Initializing InitializingPageState
+    | Ready ReadyPageState
+
+
+type alias InitializingPageState =
+    { user : User.User
+    , threads : RemoteData.WebData Thread.Page
+    , labels : RemoteData.WebData (List Label.Label)
     }
 
 
-type PageState
-    = NotAuthed
-    | Authed AuthedPageState
-
-
-type alias AuthedPageState =
+type alias ReadyPageState =
     { user : User.User
-    , threads : RemoteData.WebData (List View.Thread.Model)
-    , labels : ( Bool, RemoteData.WebData (List Label.Label) )
+    , threads : EveryDict.EveryDict Id.ThreadId View.Thread.Model
+    , labelSidebar : ( Bool, View.LabelsSidebar.Model )
     }
 
 
 init : ( Model, Cmd Msg )
 init =
-    ( { state = NotAuthed }, Cmd.none )
+    ( NotAuthed, Cmd.none )
 
 
 
@@ -48,127 +53,125 @@ init =
 
 
 type Msg
-    = NoOp
-    | GoogleApiSignedStatusChanged (Maybe User.User)
+    = GoogleApiSignedStatusChanged (Maybe User.User)
     | GoogleApiSignIn
     | GoogleApiSignOut
     | ThreadsLoaded (Result Http.Error Thread.Page)
     | LabelsLoaded (Result Http.Error (List Label.Label))
     | ThreadViewMsg Id.ThreadId View.Thread.Msg
-    | ToogleLabelsColumn
+    | LabelSidebarMsg View.LabelsSidebar.Msg
+    | ToggleLabelsColumn
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case ( msg, model.state ) of
-        ( NoOp, _ ) ->
-            ( model, Cmd.none )
+    case model of
+        NotAuthed ->
+            case msg of
+                GoogleApiSignIn ->
+                    ( model, Ports.gApiSignIn () )
 
-        ( GoogleApiSignedStatusChanged maybeUser, _ ) ->
-            let
-                ( state, nextCommand ) =
-                    case maybeUser of
-                        Nothing ->
-                            ( NotAuthed, Cmd.none )
-
-                        Just user ->
-                            ( Authed
-                                { user = user
-                                , threads = RemoteData.Loading
-                                , labels = ( True, RemoteData.Loading )
-                                }
-                            , Cmd.batch
-                                [ Request.Thread.list user.accessToken
-                                    |> Http.send ThreadsLoaded
-                                , Request.Label.list user.accessToken
-                                    |> Http.send LabelsLoaded
-                                ]
-                            )
-            in
-            ( { model | state = state }, nextCommand )
-
-        ( GoogleApiSignIn, NotAuthed ) ->
-            ( model, Ports.gApiSignIn () )
-
-        ( GoogleApiSignIn, Authed _ ) ->
-            ( model, Cmd.none )
-
-        ( GoogleApiSignOut, Authed _ ) ->
-            ( model, Ports.gApiSignOut () )
-
-        ( GoogleApiSignOut, NotAuthed ) ->
-            ( model, Cmd.none )
-
-        ( ThreadsLoaded result, Authed state ) ->
-            let
-                newThreads =
-                    RemoteData.fromResult result
-                        |> RemoteData.map
-                            (\{ threads } ->
-                                List.map
-                                    (\thread ->
-                                        { token = state.user.accessToken
-                                        , thread = thread
-                                        , messages = RemoteData.NotAsked
-                                        , expanded = False
-                                        }
-                                    )
-                                    threads
-                            )
-            in
-            ( { model | state = Authed { state | threads = newThreads } }, Cmd.none )
-
-        ( ThreadsLoaded result, NotAuthed ) ->
-            ( model, Cmd.none )
-
-        ( LabelsLoaded result, Authed state ) ->
-            let
-                ( labelsVisible, _ ) =
-                    state.labels
-            in
-            ( { model | state = Authed { state | labels = ( labelsVisible, RemoteData.fromResult result ) } }, Cmd.none )
-
-        ( LabelsLoaded result, NotAuthed ) ->
-            ( model, Cmd.none )
-
-        ( ToogleLabelsColumn, Authed state ) ->
-            let
-                ( labelsVisible, labelsData ) =
-                    state.labels
-            in
-            ( { model | state = Authed { state | labels = ( not labelsVisible, labelsData ) } }, Cmd.none )
-
-        ( ToogleLabelsColumn, _ ) ->
-            ( model, Cmd.none )
-
-        ( ThreadViewMsg threadId viewMsg, Authed state ) ->
-            case state.threads of
-                RemoteData.Success threadModels ->
+                GoogleApiSignedStatusChanged maybeUser ->
                     let
-                        ( newThreadModels, newThreadCmds ) =
-                            List.map
-                                (\t ->
-                                    case t.thread.threadId == threadId of
-                                        True ->
-                                            View.Thread.update viewMsg t
+                        ( nextModel, nextCommand ) =
+                            case maybeUser of
+                                Nothing ->
+                                    ( NotAuthed, Cmd.none )
 
-                                        False ->
-                                            ( t, Cmd.none )
-                                )
-                                threadModels
-                                |> List.unzip
-
-                        mappedCmds =
-                            List.map (\cmd -> cmd |> Cmd.map (ThreadViewMsg threadId)) newThreadCmds
-                                |> Cmd.batch
+                                Just user ->
+                                    ( Initializing
+                                        { user = user
+                                        , threads = RemoteData.Loading
+                                        , labels = RemoteData.Loading
+                                        }
+                                    , Cmd.batch
+                                        [ Request.Thread.list user.accessToken
+                                            |> Http.send ThreadsLoaded
+                                        , Request.Label.list user.accessToken
+                                            |> Http.send LabelsLoaded
+                                        ]
+                                    )
                     in
-                    ( { model | state = Authed { state | threads = RemoteData.succeed newThreadModels } }, mappedCmds )
+                    ( nextModel, nextCommand )
 
                 _ ->
                     ( model, Cmd.none )
 
-        ( ThreadViewMsg _ _, NotAuthed ) ->
-            ( model, Cmd.none )
+        Initializing state ->
+            case msg of
+                ThreadsLoaded result ->
+                    ( maybeGoToReady { state | threads = RemoteData.fromResult result }, Cmd.none )
+
+                LabelsLoaded result ->
+                    ( maybeGoToReady { state | labels = RemoteData.fromResult result }, Cmd.none )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        Ready state ->
+            case msg of
+                GoogleApiSignOut ->
+                    ( model, Ports.gApiSignOut () )
+
+                ToggleLabelsColumn ->
+                    let
+                        ( isVisible, sidebarModel ) =
+                            state.labelSidebar
+                    in
+                    ( Ready { state | labelSidebar = ( not isVisible, sidebarModel ) }, Cmd.none )
+
+                ThreadViewMsg threadId threadMsg ->
+                    let
+                        maybeThreadModel =
+                            EveryDict.get threadId state.threads
+
+                        ( newModel, newCmd ) =
+                            case maybeThreadModel of
+                                Nothing ->
+                                    ( state, Cmd.none )
+
+                                Just threadModel ->
+                                    let
+                                        ( newThreadModel, newThreadCmd ) =
+                                            View.Thread.update threadMsg threadModel
+
+                                        newThreadList =
+                                            EveryDict.insert threadId newThreadModel state.threads
+                                    in
+                                    ( { state | threads = newThreadList }, newThreadCmd |> Cmd.map (ThreadViewMsg threadId) )
+                    in
+                    ( Ready newModel, newCmd )
+
+                LabelSidebarMsg sidebarMsg ->
+                    let
+                        ( newSidebarModel, newSidebarCmd ) =
+                            View.LabelsSidebar.update sidebarMsg (state.labelSidebar |> Tuple.second)
+                    in
+                    ( Ready { state | labelSidebar = ( Tuple.first state.labelSidebar, newSidebarModel ) }, newSidebarCmd |> Cmd.map LabelSidebarMsg )
+
+                _ ->
+                    ( model, Cmd.none )
+
+
+maybeGoToReady : InitializingPageState -> Model
+maybeGoToReady state =
+    let
+        newRemoteData =
+            RemoteData.map2 (,) state.threads state.labels
+
+        nextModel =
+            case newRemoteData of
+                RemoteData.Success ( threadPage, labels ) ->
+                    Ready
+                        { user = state.user
+                        , threads = threadPage.threads |> List.map (\thread -> ( thread.threadId, View.Thread.init state.user thread )) |> EveryDict.fromList
+                        , labelSidebar = ( True, View.LabelsSidebar.init labels )
+                        }
+
+                _ ->
+                    Initializing state
+    in
+    nextModel
 
 
 
@@ -178,12 +181,15 @@ update msg model =
 view : Model -> H.Html Msg
 view model =
     H.main_ [ A.class "container" ]
-        [ case model.state of
-            Authed state ->
-                mainScreen state
-
+        [ case model of
             NotAuthed ->
                 loginScreen
+
+            Initializing _ ->
+                C.empty
+
+            Ready state ->
+                mainScreen state
         ]
 
 
@@ -196,85 +202,25 @@ loginScreen =
         ]
 
 
-mainScreen : AuthedPageState -> H.Html Msg
+mainScreen : ReadyPageState -> H.Html Msg
 mainScreen state =
     H.div [ A.class "content" ]
         [ mainScreenHeader state.user
         , H.section [ A.class "section" ]
-            [ H.div [ A.class "columns" ]
-                [ labelsColumn state.labels
+            [ H.div [ A.class "columns is-centered" ]
+                [ View.LabelsSidebar.view state.labelSidebar
+                    |> H.map LabelSidebarMsg
                 , H.div [ A.class "column" ]
-                    [ case state.threads of
-                        RemoteData.Loading ->
-                            H.div [ A.class "container" ] [ H.text "Loading..." ]
-
-                        RemoteData.Success threadModels ->
-                            threadModels
-                                |> List.map
-                                    (\threadModel ->
-                                        View.Thread.view threadModel
-                                            |> H.map
-                                                (ThreadViewMsg threadModel.thread.threadId)
-                                    )
-                                |> H.section [ A.class "section" ]
-
-                        _ ->
-                            C.empty
+                    [ H.div [ A.class "section" ]
+                        [ state.threads
+                            |> EveryDict.toList
+                            |> List.map (\( threadId, threadModel ) -> View.Thread.view threadModel |> H.map (ThreadViewMsg threadId))
+                            |> H.div [ A.class "container" ]
+                        ]
                     ]
                 ]
             ]
         ]
-
-
-labelsColumn : ( Bool, RemoteData.WebData (List Label.Label) ) -> H.Html Msg
-labelsColumn ( isVisible, labels ) =
-    case ( isVisible, labels ) of
-        ( False, RemoteData.Loading ) ->
-            C.empty
-
-        ( True, RemoteData.Loading ) ->
-            H.div [ A.class "column is-3" ] [ H.div [ A.class "container" ] [ H.text "Loading ..." ] ]
-
-        ( False, RemoteData.Success _ ) ->
-            C.empty
-
-        ( True, RemoteData.Success labels ) ->
-            let
-                ( systemLabels, userLabels ) =
-                    labels
-                        |> List.filter
-                            (\label -> label.visibility.inLabelList == Label.Visible)
-                        |> List.sortBy .name
-                        |> List.partition
-                            (\label -> label.definedBy == Label.SystemDefined)
-
-                ( inboxLabels, filterLabels ) =
-                    systemLabels
-                        |> List.filter (\label -> label.kind /= Label.Category)
-                        |> List.partition (\label -> label.kind == Label.Inbox)
-
-                inboxLabelLis =
-                    inboxLabels
-                        |> List.map (\label -> H.p [] [ H.a [] [ H.text label.name ] ])
-
-                filterLabelLis =
-                    filterLabels
-                        |> List.map (\label -> H.p [] [ H.a [] [ H.text label.name ] ])
-
-                userLabelLis =
-                    userLabels
-                        |> List.map (\label -> H.p [] [ H.a [] [ H.text label.name ] ])
-
-                paddingEl =
-                    [ H.p [ A.style [ ( "padding", "2px" ) ] ] [] ]
-
-                fullLiList =
-                    inboxLabelLis ++ paddingEl ++ filterLabelLis ++ paddingEl ++ userLabelLis
-            in
-            H.div [ A.class "column is-3" ] [ H.div [ A.class "container" ] [ H.section [ A.class "section" ] fullLiList ] ]
-
-        ( _, _ ) ->
-            C.empty
 
 
 mainScreenHeader : User.User -> H.Html Msg
@@ -286,7 +232,7 @@ mainScreenHeader user =
         ]
         [ H.div [ A.class "container" ]
             [ H.div [ A.class "navbar-brand" ]
-                [ H.a [ A.href "#", A.class "navbar-item material-icons", E.onClick ToogleLabelsColumn ] [ H.text "menu" ]
+                [ H.a [ A.href "#", A.class "navbar-item material-icons", E.onClick ToggleLabelsColumn ] [ H.text "menu" ]
                 , H.div [ A.class "navbar-burger" ]
                     [ H.figure [ A.class "image is-24x24" ]
                         [ H.img [ A.src user.imageUrl, A.class "km-avatar", A.alt "user avatar" ] []
