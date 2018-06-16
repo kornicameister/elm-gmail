@@ -8,6 +8,8 @@
     "elm": "^0.18.0"
   },
   "devDependencies": {
-    "elm-format": "^0.7.0-exp"
+    "elm-analyse": "^0.14.2",
+    "elm-format": "^0.7.0-exp",
+    "elm-oracle": "^1.1.1"
   }
 }
