@@ -3,6 +3,10 @@
   "homepage": "http://kornicameister.github.io/kgmail",
   "version": "0.0.1",
   "private": true,
+  "scripts": {
+    "start": "elm-app start",
+    "build": "elm-app build"
+  },
   "dependencies": {
     "bulma": "^0.6.2",
     "elm": "^0.18.0"
