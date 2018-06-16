@@ -8,7 +8,7 @@
     "build": "elm-app build"
   },
   "dependencies": {
-    "bulma": "^0.6.2",
+    "bulma": "^0.7.1",
     "elm": "^0.18.0"
   },
   "devDependencies": {
