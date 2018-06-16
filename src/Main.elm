@@ -7,7 +7,9 @@ import Html.Attributes as A
 import Html.Events as E
 import Json.Decode as Decode
 import Json.Encode as Encode
+import Mailbox
 import Ports
+import Task
 
 
 ---- MODEL ----
@@ -15,8 +17,14 @@ import Ports
 
 type Model
     = NotAuthed
-    | Initializing
-    | Initialized
+    | Initializing User.User
+    | Initialized InitializedModel
+
+
+type alias InitializedModel =
+    { user : User.User
+    , mailbox : Mailbox.Mailbox
+    }
 
 
 init : ( Model, Cmd Msg )
@@ -32,6 +40,7 @@ type Msg
     = GoogleApiSignedStatusChanged (Maybe User.User)
     | GoogleApiSignIn
     | GoogleApiSignOut
+    | MailboxInitialized (Result Mailbox.Error Mailbox.Mailbox)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -50,17 +59,20 @@ update msg model =
                                     ( NotAuthed, Cmd.none )
 
                                 Just user ->
-                                    ( Initializing, Cmd.none )
+                                    ( Initializing user
+                                    , Mailbox.init
+                                        |> Task.attempt MailboxInitialized
+                                    )
                     in
                     ( nextModel, nextCommand )
 
                 _ ->
                     ( model, Cmd.none )
 
-        Initializing ->
+        Initializing _ ->
             ( model, Cmd.none )
 
-        Initialized ->
+        Initialized _ ->
             case msg of
                 GoogleApiSignOut ->
                     ( model, Ports.gApiSignOut () )
@@ -80,10 +92,10 @@ view model =
             NotAuthed ->
                 loginScreen
 
-            Initializing ->
+            Initializing _ ->
                 C.empty
 
-            Initialized ->
+            Initialized _ ->
                 C.empty
         ]
 
