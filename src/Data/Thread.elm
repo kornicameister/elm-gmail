@@ -1,7 +1,14 @@
-module Data.Thread exposing (Page, Thread, WithMessages, decoder, decoderWithMessages, pageDecoder)
+module Data.Thread
+    exposing
+        ( Id
+        , Page
+        , Thread
+        , decoder
+        , idDecoder
+        , pageDecoder
+        )
 
-import Data.Id as Id
-import Data.Message as Message
+import Data.History as History
 import Json.Decode as Decode
 import Json.Decode.Pipeline as DecodeP
 
@@ -9,12 +16,12 @@ import Json.Decode.Pipeline as DecodeP
 ---- MODEL ----
 
 
+type Id
+    = Id String
+
+
 type alias Thread =
-    { threadId : Id.ThreadId, historyId : Id.HistoryId, snippet : String }
-
-
-type alias WithMessages =
-    { threadId : Id.ThreadId, historyId : Id.HistoryId, messages : List Message.Key }
+    { threadId : Id, historyId : History.Id, snippet : String }
 
 
 type alias Page =
@@ -31,17 +38,9 @@ type alias Page =
 decoder : Decode.Decoder Thread
 decoder =
     DecodeP.decode Thread
-        |> DecodeP.required "id" Id.threadIdDecoder
-        |> DecodeP.required "historyId" Id.historyIdDecoder
+        |> DecodeP.required "id" idDecoder
+        |> DecodeP.required "historyId" History.idDecoder
         |> DecodeP.required "snippet" Decode.string
-
-
-decoderWithMessages : Decode.Decoder WithMessages
-decoderWithMessages =
-    DecodeP.decode WithMessages
-        |> DecodeP.required "id" Id.threadIdDecoder
-        |> DecodeP.required "historyId" Id.historyIdDecoder
-        |> DecodeP.required "messages" (Decode.list Message.keyDecoder)
 
 
 pageDecoder : Decode.Decoder Page
@@ -50,3 +49,8 @@ pageDecoder =
         |> DecodeP.required "threads" (Decode.list decoder)
         |> DecodeP.required "nextPageToken" (Decode.nullable Decode.string)
         |> DecodeP.required "resultSizeEstimate" Decode.int
+
+
+idDecoder : Decode.Decoder Id
+idDecoder =
+    Decode.map Id Decode.string

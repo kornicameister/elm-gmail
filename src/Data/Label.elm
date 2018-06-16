@@ -1,19 +1,24 @@
 module Data.Label
     exposing
         ( DefinedBy(..)
+        , Id
         , Kind(..)
         , Label
         , VisibilityInLabelsList(..)
         , decoder
+        , idDecoder
         )
 
-import Data.Id as Id
 import Json.Decode as Decode
 import Json.Decode.Pipeline as DecodeP
 
 
+type Id
+    = Id String
+
+
 type alias Label =
-    { id : Id.LabelId
+    { id : Id
     , name : String
     , definedBy : DefinedBy
     , visibility : Visibility
@@ -96,7 +101,7 @@ decoder =
                     )
     in
     DecodeP.decode Label
-        |> DecodeP.required "id" Id.labelIdDecoder
+        |> DecodeP.required "id" idDecoder
         |> DecodeP.required "name" Decode.string
         |> DecodeP.required "type" kindDecoder
         |> DecodeP.custom
@@ -131,3 +136,8 @@ decoder =
                                 Decode.fail <| "Failed to deduce label kind from id: " ++ id
                     )
             )
+
+
+idDecoder : Decode.Decoder Id
+idDecoder =
+    Decode.map Id Decode.string

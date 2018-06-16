@@ -1,7 +1,20 @@
-module Data.Message exposing (Body(..), Key, Message, Page, Parts(..), decoder, keyDecoder, pageDecoder)
+module Data.Message
+    exposing
+        ( Body(..)
+        , Key
+        , Message
+        , Page
+        , Parts(..)
+        , decoder
+        , keyDecoder
+        , pageDecoder
+        )
 
 import Base64
-import Data.Id as Id
+import Data.Attachment as Attachment
+import Data.History as History
+import Data.Label as Label
+import Data.Thread as Thread
 import Json.Decode as Decode
 import Json.Decode.Pipeline as DecodeP
 import UrlBase64
@@ -10,11 +23,15 @@ import UrlBase64
 ---- MODEL ----
 
 
+type Id
+    = Id String
+
+
 type alias Message =
-    { messageId : Id.MessageId
-    , threadId : Id.ThreadId
-    , historyId : Id.HistoryId
-    , labelIds : List Id.LabelId
+    { messageId : Id
+    , threadId : Thread.Id
+    , historyId : History.Id
+    , labelIds : List Label.Id
     , snippet : String
     , payload : Payload
     }
@@ -51,7 +68,7 @@ type Body
 
 
 type alias AttachedBody =
-    { attachmentId : Id.AttachmentId }
+    { attachmentId : Attachment.Id }
 
 
 type alias DataBody =
@@ -59,8 +76,8 @@ type alias DataBody =
 
 
 type alias Key =
-    { messageId : Id.MessageId
-    , threadId : Id.ThreadId
+    { messageId : Id
+    , threadId : Thread.Id
     }
 
 
@@ -99,7 +116,7 @@ decoder =
         bodyDecoder =
             Decode.oneOf
                 [ DecodeP.decode AttachedBody
-                    |> DecodeP.required "attachmentId" Id.attachmentIdDecoder
+                    |> DecodeP.required "attachmentId" Attachment.idDecoder
                     |> Decode.map WithAttachment
                 , Decode.field "size" Decode.int
                     |> Decode.andThen
@@ -155,10 +172,10 @@ decoder =
                     )
     in
     DecodeP.decode Message
-        |> DecodeP.required "id" Id.messageIdDecoder
-        |> DecodeP.required "threadId" Id.threadIdDecoder
-        |> DecodeP.required "historyId" Id.historyIdDecoder
-        |> DecodeP.required "labelIds" (Decode.list Id.labelIdDecoder)
+        |> DecodeP.required "id" idDecoder
+        |> DecodeP.required "threadId" Thread.idDecoder
+        |> DecodeP.required "historyId" History.idDecoder
+        |> DecodeP.required "labelIds" (Decode.list Label.idDecoder)
         |> DecodeP.required "snippet" Decode.string
         |> DecodeP.required "payload" payloadDecoder
 
@@ -166,8 +183,8 @@ decoder =
 keyDecoder : Decode.Decoder Key
 keyDecoder =
     DecodeP.decode Key
-        |> DecodeP.required "id" Id.messageIdDecoder
-        |> DecodeP.required "threadId" Id.threadIdDecoder
+        |> DecodeP.required "id" idDecoder
+        |> DecodeP.required "threadId" Thread.idDecoder
 
 
 pageDecoder : Decode.Decoder Page
@@ -176,3 +193,8 @@ pageDecoder =
         |> DecodeP.required "messages" (Decode.list keyDecoder)
         |> DecodeP.required "nextPageToken" (Decode.nullable Decode.string)
         |> DecodeP.required "resultSizeEstimate" Decode.int
+
+
+idDecoder : Decode.Decoder Id
+idDecoder =
+    Decode.map Id Decode.string
