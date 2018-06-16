@@ -6,6 +6,8 @@
   "dependencies": {
     "bulma": "^0.6.2",
     "elm": "^0.18.0",
+  }
+  "devDependencies":{
     "elm-format": "^0.7.0-exp"
   }
 }
