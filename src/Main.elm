@@ -18,13 +18,8 @@ import Task
 type Model
     = NotAuthed
     | Initializing User.User
-    | Initialized InitializedModel
-
-
-type alias InitializedModel =
-    { user : User.User
-    , mailbox : Mailbox.Mailbox
-    }
+    | Initialized ( User.User, Mailbox.Mailbox )
+    | Failed Mailbox.Error
 
 
 init : ( Model, Cmd Msg )
@@ -60,7 +55,7 @@ update msg model =
 
                                 Just user ->
                                     ( Initializing user
-                                    , Mailbox.init
+                                    , Mailbox.init user.accessToken
                                         |> Task.attempt MailboxInitialized
                                     )
                     in
@@ -69,8 +64,18 @@ update msg model =
                 _ ->
                     ( model, Cmd.none )
 
-        Initializing _ ->
-            ( model, Cmd.none )
+        Initializing user ->
+            case msg of
+                MailboxInitialized mailboxResult ->
+                    case mailboxResult of
+                        Ok mailbox ->
+                            ( Initialized ( user, mailbox ), Cmd.none )
+
+                        Err err ->
+                            ( Failed err, Cmd.none )
+
+                _ ->
+                    ( model, Cmd.none )
 
         Initialized _ ->
             case msg of
@@ -79,6 +84,9 @@ update msg model =
 
                 _ ->
                     ( model, Cmd.none )
+
+        Failed _ ->
+            ( model, Cmd.none )
 
 
 
@@ -91,6 +99,9 @@ view model =
         [ case model of
             NotAuthed ->
                 loginScreen
+
+            Failed _ ->
+                C.empty
 
             Initializing _ ->
                 C.empty
