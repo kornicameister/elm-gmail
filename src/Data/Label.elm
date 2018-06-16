@@ -4,13 +4,17 @@ module Data.Label
         , Id
         , Kind(..)
         , Label
+        , LabelColor
         , VisibilityInLabelsList(..)
         , decoder
         , idDecoder
         )
 
+import Color
 import Json.Decode as Decode
 import Json.Decode.Pipeline as DecodeP
+import ParseInt
+import Regex
 
 
 type Id
@@ -23,6 +27,13 @@ type alias Label =
     , definedBy : DefinedBy
     , visibility : Visibility
     , kind : Kind
+    , color : Maybe LabelColor
+    }
+
+
+type alias LabelColor =
+    { background : Color.Color
+    , text : Color.Color
     }
 
 
@@ -99,6 +110,61 @@ decoder =
                             _ ->
                                 Decode.fail <| "Uknown messageListVisibility: " ++ x
                     )
+
+        colorDecoder =
+            DecodeP.decode LabelColor
+                |> DecodeP.required "backgroundColor" hexToRgaColorDecoder
+                |> DecodeP.required "textColor" hexToRgaColorDecoder
+
+        hexToRgaColorDecoder =
+            Decode.string
+                |> Decode.andThen
+                    (\hexColor ->
+                        case hexToColor hexColor of
+                            Err err ->
+                                Decode.fail <| ("Failed to convert " ++ hexColor ++ " to color")
+
+                            Ok color ->
+                                Decode.succeed color
+                    )
+
+        hexToColor =
+            let
+                extend token =
+                    case String.toList token of
+                        [ token ] ->
+                            String.fromList [ token, token ]
+
+                        _ ->
+                            token
+
+                pattern =
+                    ""
+                        ++ "^"
+                        ++ "#?"
+                        ++ "(?:"
+                        ++ "(?:([a-f\\d]{2})([a-f\\d]{2})([a-f\\d]{2}))"
+                        ++ "|"
+                        ++ "(?:([a-f\\d])([a-f\\d])([a-f\\d]))"
+                        ++ ")"
+                        ++ "$"
+            in
+            String.toLower
+                >> Regex.find (Regex.AtMost 1) (Regex.regex pattern)
+                >> List.head
+                >> Maybe.map .submatches
+                >> Maybe.map (List.filterMap identity)
+                >> Result.fromMaybe "Parsing hex regex failed"
+                >> Result.andThen
+                    (\colors ->
+                        case List.map (extend >> ParseInt.parseIntHex) colors of
+                            [ Ok r, Ok g, Ok b ] ->
+                                Ok <| Color.rgb r g b
+
+                            _ ->
+                                -- there could be more descriptive error cases per channel
+                                Err "Parsing ints from hex failed"
+                    )
     in
     DecodeP.decode Label
         |> DecodeP.required "id" idDecoder
@@ -136,6 +202,7 @@ decoder =
                                 Decode.fail <| "Failed to deduce label kind from id: " ++ id
                     )
             )
+        |> DecodeP.optional "color" (Decode.nullable colorDecoder) Nothing
 
 
 idDecoder : Decode.Decoder Id
