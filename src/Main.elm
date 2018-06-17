@@ -35,7 +35,8 @@ type Msg
     = GoogleApiSignedStatusChanged (Maybe User.User)
     | GoogleApiSignIn
     | GoogleApiSignOut
-    | MailboxInitialized (Result Mailbox.Error Mailbox.Mailbox)
+    | MailboxInitialized (Result Mailbox.Error ( Mailbox.Mailbox, Cmd Mailbox.Msg ))
+    | MailboxMsg Mailbox.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -69,7 +70,9 @@ update msg model =
                 MailboxInitialized mailboxResult ->
                     case mailboxResult of
                         Ok mailbox ->
-                            ( Initialized ( user, mailbox ), Cmd.none )
+                            ( Initialized ( user, Tuple.first mailbox )
+                            , Tuple.second mailbox |> Cmd.map MailboxMsg
+                            )
 
                         Err err ->
                             ( Failed err, Cmd.none )
@@ -77,10 +80,17 @@ update msg model =
                 _ ->
                     ( model, Cmd.none )
 
-        Initialized _ ->
+        Initialized ( user, mailbbox ) ->
             case msg of
                 GoogleApiSignOut ->
                     ( model, Ports.gApiSignOut () )
+
+                MailboxMsg mailboxMsg ->
+                    let
+                        ( nextMailboxModel, nextMailboxMsg ) =
+                            Mailbox.update mailboxMsg mailbbox
+                    in
+                    ( Initialized ( user, nextMailboxModel ), nextMailboxMsg |> Cmd.map MailboxMsg )
 
                 _ ->
                     ( model, Cmd.none )
