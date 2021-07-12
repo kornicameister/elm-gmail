@@ -4,6 +4,7 @@ module Data.Thread
         , Page
         , Thread
         , decoder
+        , idAsString
         , idDecoder
         , pageDecoder
         )
@@ -29,6 +30,15 @@ type alias Page =
     , nextPageToken : Maybe String
     , resultSizeEstimate : Int
     }
+
+
+
+---- HELPERS
+
+
+idAsString : Id -> String
+idAsString (Id str) =
+    str
 
 
 

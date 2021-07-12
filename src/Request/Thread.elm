@@ -1,22 +1,43 @@
-module Request.Thread exposing (Format(..), list, one)
+module Request.Thread
+    exposing
+        ( Format(..)
+        , PageToken(..)
+        , messages
+        , page
+        )
 
 import Config
-import Data.Id as Id
+import Data.Message as Message
 import Data.Thread as Thread
 import Data.Token as Token
 import Http
 import HttpBuilder as HttpB
+import Json.Decode as Decode
 
 
-list : Token.Token -> Http.Request Thread.Page
-list token =
+type PageToken
+    = FirstPage
+    | NextPage String
+
+
+page : Token.Token -> PageToken -> Http.Request Thread.Page
+page token pageToken =
     let
         url =
             Config.threadsUrl
+
+        params =
+            case pageToken of
+                FirstPage ->
+                    []
+
+                NextPage token ->
+                    [ ( "pageToken", token ) ]
     in
     HttpB.get url
         |> Token.withAuthorizationHeader (Just token)
         |> HttpB.withExpect (Http.expectJson <| Thread.pageDecoder)
+        |> HttpB.withQueryParams params
         |> HttpB.toRequest
 
 
@@ -26,8 +47,8 @@ type Format
     | Full
 
 
-one : Token.Token -> { id : Id.ThreadId, format : Format } -> Http.Request Thread.WithMessages
-one token { id, format } =
+messages : Token.Token -> { id : Thread.Id, format : Format } -> Http.Request (List Message.Message)
+messages token { id, format } =
     let
         formatAsString format =
             case format of
@@ -41,10 +62,10 @@ one token { id, format } =
                     "full"
 
         url =
-            String.join "/" [ Config.threadsUrl, Id.threadIdAsString id ]
+            String.join "/" [ Config.threadsUrl, Thread.idAsString id ]
     in
     HttpB.get url
         |> Token.withAuthorizationHeader (Just token)
         |> HttpB.withQueryParams [ ( "format", formatAsString format ) ]
-        |> HttpB.withExpect (Http.expectJson <| Thread.decoderWithMessages)
+        |> HttpB.withExpect (Http.expectJson <| Decode.at [ "messages" ] (Decode.list Message.decoder))
         |> HttpB.toRequest
